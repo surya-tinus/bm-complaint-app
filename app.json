@@ -1,0 +1,8 @@
+{
+  "expo": {
+    "name": "Complaint App BM",
+    "slug": "complaint-app-bm",
+    "version": "1.0.0",
+    "plugins": ["expo-router"]
+  }
+}
