@@ -13,7 +13,7 @@ const getTicketDetail = async (id: string): Promise<TicketDetail> => {
     if (!ticket) throw new Error('Tiket tidak ditemukan')
     return ticket
   }
-  // TODO: ganti dengan real API
+  // TODO: swap ke real API
   // const { data } = await api.get(`/tickets/${id}`)
   // return data.data
   throw new Error('API belum tersedia')
@@ -24,8 +24,8 @@ const cancelTicket = async (id: string): Promise<void> => {
     await delay(800)
     return
   }
-  // TODO: ganti dengan real API
-  // await api.patch(`/tickets/${id}/cancel`)
+  // TODO: swap ke real API
+  // await api.post('/requests', { ticketId: id, requestType: 'cancel' })
 }
 
 export const useTicketDetail = (id: string) => {
@@ -41,15 +41,15 @@ export const useTicketDetail = (id: string) => {
 
   const cancelMutation = useMutation({
     mutationFn: () => cancelTicket(id),
-    onSuccess: () => {
-      setCancelModalVisible(false)
-    },
+    onSuccess: () => setCancelModalVisible(false),
   })
 
+  // ✅ Fix: tambah in_progress
   const canCancel =
     query.data?.status === 'open' ||
     query.data?.status === 'pending' ||
-    query.data?.status === 'on_hold'
+    query.data?.status === 'on_hold' ||
+    query.data?.status === 'in_progress'
 
   return {
     ticket: query.data,

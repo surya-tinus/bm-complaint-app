@@ -109,7 +109,6 @@ function ListFooter() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#1A56C4',
   },
   header: {
     backgroundColor: '#1A56C4',

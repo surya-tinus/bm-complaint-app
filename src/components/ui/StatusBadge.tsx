@@ -1,3 +1,4 @@
+//Src/components/ui/StatusBadge.tsx
 import React from 'react'
 import { View, Text, StyleSheet } from 'react-native'
 import { TicketStatus } from '@/features/dashboard/types'

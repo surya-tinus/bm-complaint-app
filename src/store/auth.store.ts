@@ -1,3 +1,4 @@
+// src/store/auth.store.ts
 import { create } from 'zustand'
 import { User, AuthTokens } from '@/types/api.types'
 

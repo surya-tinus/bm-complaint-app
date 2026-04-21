@@ -1,19 +1,58 @@
 import React from 'react'
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
-import { Ticket, TicketType } from '@/features/dashboard/types'
+import { Ionicons } from '@expo/vector-icons'
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons'
+import { Ticket, PriorityLevel } from '@/features/dashboard/types'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 
+// 1. Definisikan tipe untuk kombinasi library icon
+export type IconConfig =
+  | { family: 'Ionicons'; name: keyof typeof Ionicons.glyphMap }
+  | { family: 'MaterialCommunityIcons'; name: keyof typeof MaterialCommunityIcons.glyphMap }
 
-interface TypeConfig {
-  label: string
-  color: string
-  icon: string
+// 2. Update fungsi mapping untuk mengembalikan IconConfig
+const getIssueTypeIcon = (issueTypeName: string): IconConfig => {
+  const map: Record<string, IconConfig> = {
+    'Peralatan':               { family: 'Ionicons', name: 'construct-outline' },
+    'Fasilitas':               { family: 'MaterialCommunityIcons', name: 'office-building-outline' },
+    'Kebersihan':              { family: 'MaterialCommunityIcons', name: 'broom' },
+    'Keamanan':                { family: 'Ionicons', name: 'shield-checkmark-outline' },
+    'Maintenance':             { family: 'Ionicons', name: 'build-outline' },
+    'Cleanliness':             { family: 'MaterialCommunityIcons', name: 'broom' },
+    'Building & Facility':     { family: 'MaterialCommunityIcons', name: 'office-building-outline' },
+    'Electrical & Lighting':   { family: 'MaterialCommunityIcons', name: 'lightning-bolt-outline' },
+    'HVAC & Air Conditioning': { family: 'MaterialCommunityIcons', name: 'air-conditioner' },
+    'Security':                { family: 'Ionicons', name: 'shield-checkmark-outline' },
+    'Equipment & Tools':       { family: 'Ionicons', name: 'construct-outline' },
+    'Staff Assistance':        { family: 'Ionicons', name: 'people-outline' },
+    'Plumbing & Water':        { family: 'MaterialCommunityIcons', name: 'pipe-leak' },
+  }
+  return map[issueTypeName] ?? { family: 'Ionicons', name: 'ticket-outline' }
 }
 
-const TYPE_CONFIG: Record<TicketType, TypeConfig> = {
-  request: { label: 'Request', color: '#8B5CF6', icon: '◎' },
-  issue:   { label: 'Issue',   color: '#EF4444', icon: '⚡' },
-  report:  { label: 'Report',  color: '#3B82F6', icon: '◉' },
+const getIssueTypeColor = (issueTypeName: string): string => {
+  const map: Record<string, string> = {
+    'Peralatan':               '#8B5CF6',
+    'Fasilitas':               '#EF4444',
+    'Kebersihan':              '#3B82F6',
+    'Keamanan':                '#F59E0B',
+    'Maintenance':             '#10B981',
+    'Cleanliness':             '#3B82F6',
+    'Building & Facility':     '#EF4444',
+    'Electrical & Lighting':   '#F59E0B',
+    'HVAC & Air Conditioning': '#06B6D4',
+    'Security':                '#F59E0B',
+    'Equipment & Tools':       '#8B5CF6',
+    'Staff Assistance':        '#10B981',
+    'Plumbing & Water':        '#0EA5E9',
+  }
+  return map[issueTypeName] ?? '#6B7280'
+}
+
+const PRIORITY_CONFIG: Record<PriorityLevel, { label: string; color: string }> = {
+  low:    { label: 'Low',    color: '#10B981' },
+  medium: { label: 'Medium', color: '#F59E0B' },
+  high:   { label: 'High',   color: '#EF4444' },
 }
 
 interface Props {
@@ -21,25 +60,48 @@ interface Props {
   onPress: (ticket: Ticket) => void
 }
 
+// 3. Buat komponen pembantu untuk merender icon sesuai library-nya
+const DynamicIcon = ({ config, size, color }: { config: IconConfig, size: number, color: string }) => {
+  if (config.family === 'Ionicons') {
+    return <Ionicons name={config.name} size={size} color={color} />
+  }
+  if (config.family === 'MaterialCommunityIcons') {
+    return <MaterialCommunityIcons name={config.name} size={size} color={color} />
+  }
+  return null
+}
+
 export function TicketCard({ ticket, onPress }: Props) {
-  const typeConfig = TYPE_CONFIG[ticket.type]
+  // 4. Panggil config icon-nya
+  const iconConfig = getIssueTypeIcon(ticket.issueType.name)
+  const color = getIssueTypeColor(ticket.issueType.name)
+  const priority = PRIORITY_CONFIG[ticket.priority]
 
   return (
     <TouchableOpacity style={styles.card} onPress={() => onPress(ticket)} activeOpacity={0.85}>
-      {/* Type label */}
+
+      {/* Type + Priority row */}
       <View style={styles.typeRow}>
-        <View style={[styles.typeDot, { backgroundColor: typeConfig.color }]} />
-        <Text style={[styles.typeLabel, { color: typeConfig.color }]}>{typeConfig.label}</Text>
+        <View style={styles.typeLeft}>
+          <View style={[styles.typeDot, { backgroundColor: color }]} />
+          <Text style={[styles.typeLabel, { color }]}>{ticket.issueType.name}</Text>
+        </View>
+        <View style={[styles.priorityBadge, { backgroundColor: priority.color + '18' }]}>
+          <Text style={[styles.priorityText, { color: priority.color }]}>
+            {priority.label}
+          </Text>
+        </View>
       </View>
 
       {/* Title row */}
       <View style={styles.titleRow}>
-        <View style={[styles.iconCircle, { backgroundColor: typeConfig.color + '18' }]}>
-          <Text style={styles.typeIcon}>{typeConfig.icon}</Text>
+        <View style={[styles.iconCircle, { backgroundColor: color + '18' }]}>
+          {/* 5. Render menggunakan DynamicIcon */}
+          <DynamicIcon config={iconConfig} size={20} color={color} />
         </View>
         <View style={styles.titleInfo}>
           <Text style={styles.ticketId}>{ticket.id}</Text>
-          <Text style={styles.title} numberOfLines={1}>{ticket.title}</Text>
+          <Text style={styles.title} numberOfLines={1}>{ticket.shortDescription}</Text>
         </View>
         <StatusBadge status={ticket.status} />
       </View>
@@ -47,20 +109,19 @@ export function TicketCard({ ticket, onPress }: Props) {
       <View style={styles.divider} />
 
       {/* Meta */}
-      <View style={styles.metaRow}>
-        <View style={styles.metaItem}>
-          <Text style={styles.metaIcon}>📍</Text>
-          <Text style={styles.metaText} numberOfLines={1}>{ticket.building}</Text>
-        </View>
-        <View style={styles.metaItem}>
-          <Text style={styles.metaIcon}>🚪</Text>
-          <Text style={styles.metaText}>{ticket.room}</Text>
-        </View>
+      <View style={styles.metaItem}>
+        <Ionicons name="location-outline" size={13} color="#9CA3AF" />
+        <Text style={styles.metaText} numberOfLines={1}>{ticket.place.building}</Text>
       </View>
       <View style={styles.metaItem}>
-        <Text style={styles.metaIcon}>🕐</Text>
+        <Ionicons name="document-outline" size={13} color="#9CA3AF" />
+        <Text style={styles.metaText}>{ticket.place.name}</Text>
+      </View>
+      <View style={styles.metaItem}>
+        <Ionicons name="time-outline" size={13} color="#9CA3AF" />
         <Text style={styles.metaText}>Reported on : {ticket.reportedAt}</Text>
       </View>
+
     </TouchableOpacity>
   )
 }
@@ -80,7 +141,12 @@ const styles = StyleSheet.create({
   typeRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 10,
+  },
+  typeLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 6,
   },
   typeDot: {
@@ -93,6 +159,15 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     letterSpacing: 0.3,
   },
+  priorityBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  priorityText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -103,9 +178,6 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  typeIcon: {
-    fontSize: 18,
   },
   titleInfo: {
     flex: 1,
@@ -127,18 +199,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#F3F4F6',
     marginVertical: 12,
   },
-  metaRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 6,
-  },
   metaItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-  },
-  metaIcon: {
-    fontSize: 12,
+    gap: 6,
+    paddingVertical: 3,
   },
   metaText: {
     fontSize: 12,

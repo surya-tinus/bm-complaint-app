@@ -2,18 +2,10 @@ import { useState, useMemo } from 'react'
 import { Ticket, TicketStatus } from '@/features/dashboard/types'
 import { MOCK_TICKETS } from '@/mocks/dashboard.mock'
 
-// Swap point: ganti MOCK_TICKETS dengan API call di sini nanti
-// import { useDashboardService } from '@/services/dashboard.service'
-
 export type FilterLabel = 'All' | 'Pending' | 'In Progress' | 'On Hold' | 'Resolved' | 'Open'
 
 export const FILTER_OPTIONS: FilterLabel[] = [
-  'All',
-  'Pending',
-  'In Progress',
-  'On Hold',
-  'Resolved',
-  'Open',
+  'All', 'Pending', 'In Progress', 'On Hold', 'Resolved', 'Open',
 ]
 
 const FILTER_STATUS_MAP: Record<FilterLabel, TicketStatus | null> = {
@@ -29,7 +21,6 @@ export function useDashboard() {
   const [searchQuery, setSearchQuery] = useState('')
   const [activeFilter, setActiveFilter] = useState<FilterLabel>('All')
 
-  // Swap point: ganti dengan data dari API/service nanti
   const tickets: Ticket[] = MOCK_TICKETS
 
   const filteredTickets = useMemo(() => {
@@ -41,8 +32,9 @@ export function useDashboard() {
       const matchesSearch =
         !q ||
         t.id.toLowerCase().includes(q) ||
-        t.title.toLowerCase().includes(q) ||
-        t.building.toLowerCase().includes(q)
+        t.shortDescription.toLowerCase().includes(q) ||  // updated dari title → shortDescription
+        t.place.building.toLowerCase().includes(q) ||    // updated dari building → place.building
+        t.issueType.name.toLowerCase().includes(q)       // tambahan: search by issue type
       return matchesFilter && matchesSearch
     })
   }, [tickets, activeFilter, searchQuery])
