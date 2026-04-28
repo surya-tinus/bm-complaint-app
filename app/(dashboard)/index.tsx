@@ -5,19 +5,21 @@ import {
   FlatList,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   StatusBar,
   Platform,
 } from 'react-native'
 import { useRouter } from 'expo-router'
+import { useSafeAreaInsets } from 'react-native-safe-area-context' 
 import { SearchBar } from '@/components/ui/SearchBar'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { TicketCard } from '@/features/dashboard/components/TicketCard'
 import { FilterChips } from '@/features/dashboard/components/FilterChips'
 import { useDashboard } from '@/features/dashboard/hooks/useDashboard'
 import { Ticket } from '@/features/dashboard/types'
+import { notifyTicketUpdate } from '@/services/notification.service'
 
 export default function DashboardScreen() {
+  const insets = useSafeAreaInsets() 
   const router = useRouter()
   const { searchQuery, setSearchQuery, activeFilter, setActiveFilter, filteredTickets } =
     useDashboard()
@@ -30,12 +32,16 @@ export default function DashboardScreen() {
     router.push('/(dashboard)/create')
   }
 
+  const handleTestNotif = async () => {
+    await notifyTicketUpdate('TKT-0001-1113', 'ticket_in_progress')
+  }
+
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.safeArea}>  {/* ← dari SafeAreaView */}
       <StatusBar barStyle="light-content" backgroundColor="#1A56C4" />
 
-      {/* Header */}
-      <View style={styles.header}>
+      {/* Header — paddingTop pakai insets */}
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <TouchableOpacity
           style={styles.backBtn}
           onPress={() => router.back()}
@@ -56,29 +62,40 @@ export default function DashboardScreen() {
           onChangeText={setSearchQuery}
           placeholder="Search ticket by ID or problem..."
         />
-
         <FilterChips activeFilter={activeFilter} onFilterChange={setActiveFilter} />
-
         <FlatList
           data={filteredTickets}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <TicketCard ticket={item} onPress={handleTicketPress} />
           )}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[
+            styles.listContent,
+            { paddingBottom: insets.bottom + 100 },  // ← dynamic, biar FAB ga nutup konten
+          ]}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={<EmptyState hasQuery={!!searchQuery} />}
-          ListFooterComponent={
-            filteredTickets.length > 0 ? <ListFooter /> : null
-          }
+          ListFooterComponent={filteredTickets.length > 0 ? <ListFooter /> : null}
         />
       </View>
 
-      {/* FAB */}
-      <TouchableOpacity style={styles.fab} onPress={handleCreateTicket} activeOpacity={0.85}>
+      <TouchableOpacity
+  style={{ position: 'absolute', bottom: 100, right: 20, backgroundColor: '#1A56C4', padding: 12, borderRadius: 8 }}
+  onPress={handleTestNotif}
+>
+  <Text style={{ color: '#fff', fontSize: 12 }}>Test Notif</Text>
+</TouchableOpacity>
+
+      {/* FAB — paddingBottom pakai insets */}
+      <TouchableOpacity
+        style={[styles.fab, { bottom: insets.bottom + 20 }]}  // ← dynamic
+        onPress={handleCreateTicket}
+        activeOpacity={0.85}
+      >
         <Text style={styles.fabIcon}>+</Text>
       </TouchableOpacity>
-    </SafeAreaView>
+
+    </View>
   )
 }
 
@@ -115,7 +132,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'android' ? 12 : 8,
     paddingBottom: 20,
     gap: 14,
   },
@@ -192,9 +208,8 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
     fontWeight: '500',
   },
-  fab: {
+   fab: {
     position: 'absolute',
-    bottom: 28,
     right: 20,
     width: 54,
     height: 54,

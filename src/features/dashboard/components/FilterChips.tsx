@@ -10,9 +10,6 @@ interface Props {
 export function FilterChips({ activeFilter, onFilterChange }: Props) {
   return (
     <View style={styles.row}>
-      <TouchableOpacity style={styles.iconBtn}>
-        <Text style={styles.filterIcon}>⚙</Text>
-      </TouchableOpacity>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}

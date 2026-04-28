@@ -5,7 +5,6 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   StatusBar,
   Platform,
   Modal,
@@ -16,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { useTicketDetail } from '@/features/dashboard/hooks/useTicketDetail'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { TicketDetail, TimelineStep, PriorityLevel } from '@/features/dashboard/types'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 const PRIORITY_CONFIG: Record<PriorityLevel, { label: string; color: string; bg: string }> = {
   low:    { label: 'Low',    color: '#10B981', bg: '#D1FAE5' },
@@ -24,6 +24,7 @@ const PRIORITY_CONFIG: Record<PriorityLevel, { label: string; color: string; bg:
 }
 
 export default function TicketDetailScreen() {
+  const insets = useSafeAreaInsets()
   const router = useRouter()
   const { id } = useLocalSearchParams<{ id: string }>()
   const {
@@ -43,31 +44,31 @@ export default function TicketDetailScreen() {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.safeArea}>
-        <Header id={id} onBack={() => router.back()} />
+      <View style={styles.safeArea}>
+        <Header id={id} onBack={() => router.back()} topInset={insets.top} />
         <View style={styles.centered}>
           <ActivityIndicator size="large" color="#1A56C4" />
         </View>
-      </SafeAreaView>
+      </View>
     )
   }
 
   if (isError || !ticket) {
     return (
-      <SafeAreaView style={styles.safeArea}>
-        <Header id={id} onBack={() => router.back()} />
+      <View style={styles.safeArea}>
+        <Header id={id} onBack={() => router.back()} topInset={insets.top} />
         <View style={styles.centered}>
           <Ionicons name="warning-outline" size={40} color="#9CA3AF" />
           <Text style={styles.errorText}>Tiket tidak ditemukan</Text>
         </View>
-      </SafeAreaView>
+      </View>
     )
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.safeArea}>
       <StatusBar barStyle="light-content" backgroundColor="#1A56C4" />
-      <Header id={ticket.id} onBack={() => router.back()} />
+      <Header id={id} onBack={() => router.back()} topInset={insets.top} />
 
       {/* Scrollable content */}
       <ScrollView
@@ -92,13 +93,13 @@ export default function TicketDetailScreen() {
 
       {/* Cancel Button — di luar ScrollView, di dalam SafeAreaView */}
       {canCancel && (
-        <View style={styles.bottomBar}>
+        <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12 }]}>
           <TouchableOpacity
             style={styles.cancelBtn}
             onPress={() => setCancelModalVisible(true)}
             activeOpacity={0.85}
           >
-            <Ionicons name="close-circle-outline" size={18} color="#EF4444" />
+            <Ionicons name="close-circle-outline" size={18} color="#f5f2f3" />
             <Text style={styles.cancelBtnText}>Cancel Ticket</Text>
           </TouchableOpacity>
         </View>
@@ -110,15 +111,15 @@ export default function TicketDetailScreen() {
         onCancel={handleCancel}
         isLoading={isCancelling}
       />
-    </SafeAreaView>
+    </View>
   )
 }
 
 // ─── Header ───────────────────────────────────────────────
 
-function Header({ id, onBack }: { id: string; onBack: () => void }) {
+function Header({ id, onBack, topInset }: { id: string; onBack: () => void; topInset: number }) {
   return (
-    <View style={styles.header}>
+    <View style={[styles.header, { paddingTop: topInset + 8 }]}>
       <TouchableOpacity
         style={styles.backBtn}
         onPress={onBack}
@@ -406,7 +407,10 @@ function CancelModal({
 // ─── Styles ────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#1A56C4' },
+  safeArea: { 
+  flex: 1, 
+  backgroundColor: '#F3F4F6'  // ← ganti jadi abu (warna body), bukan biru
+},
   centered: {
     flex: 1, justifyContent: 'center', alignItems: 'center',
     backgroundColor: '#F3F4F6', gap: 8,
@@ -414,14 +418,14 @@ const styles = StyleSheet.create({
   errorText: { fontSize: 15, color: '#6B7280', fontWeight: '500' },
 
   header: {
-    backgroundColor: '#1A56C4',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'android' ? 12 : 8,
-    paddingBottom: 20,
-    gap: 14,
-  },
+  backgroundColor: '#1A56C4',
+  flexDirection: 'row',
+  alignItems: 'center',
+  paddingHorizontal: 20,
+  paddingTop: Platform.OS === 'android' ? 12 : 8,  // ← ini yang lama
+  paddingBottom: 20,
+  gap: 14,
+},
   backBtn: {
     width: 36, height: 36, borderRadius: 18,
     backgroundColor: 'rgba(255,255,255,0.15)',
@@ -520,32 +524,35 @@ const styles = StyleSheet.create({
   staffNotesBox: { backgroundColor: '#F9FAFB', borderRadius: 10, padding: 12 },
   staffNotesText: { fontSize: 13, color: '#6B7280', lineHeight: 20 },
 
-  // ✅ Fix: bottomBar tidak pakai absolute lagi
-  bottomBar: {
-    backgroundColor: '#1A56C4',
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: Platform.OS === 'ios' ? 28 : 16,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-  },
-  cancelBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  
-    borderRadius: 28,
-    paddingVertical: 14,
-    borderWidth: 1.5,
-    borderColor: '#EF4444',
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  cancelBtnText: { color: '#EF4444', fontSize: 15, fontWeight: '700' },
+  // Ganti style bottomBar dan cancelBtn dengan ini:
 
+bottomBar: {
+  backgroundColor: '#fff',           // ← dari '#1A56C4' jadi putih
+  paddingHorizontal: 20,
+  paddingTop: 12,
+  borderTopWidth: 1,
+  borderTopColor: '#E5E7EB',
+  shadowColor: '#000',
+  shadowOpacity: 0.06,
+  shadowRadius: 8,
+  shadowOffset: { width: 0, height: -3 },
+  elevation: 8,
+},
+cancelBtn: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 8,
+  borderRadius: 28,
+  paddingVertical: 14,
+  backgroundColor: '#EF4444',        // ← dari transparan jadi merah solid
+  // borderWidth dihapus
+},
+cancelBtnText: { 
+  color: '#fff',                     // ← dari '#EF4444' jadi putih
+  fontSize: 15, 
+  fontWeight: '700' 
+},
   modalOverlay: {
     flex: 1, backgroundColor: 'rgba(0,0,0,0.45)',
     justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32,
