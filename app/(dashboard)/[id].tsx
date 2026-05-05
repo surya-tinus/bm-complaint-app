@@ -1,3 +1,4 @@
+// app/(dashboard)/[id].tsx
 import React from 'react'
 import {
   View,
@@ -9,6 +10,7 @@ import {
   Platform,
   Modal,
   ActivityIndicator,
+  TextInput,
 } from 'react-native'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
@@ -23,6 +25,12 @@ const PRIORITY_CONFIG: Record<PriorityLevel, { label: string; color: string; bg:
   high:   { label: 'High',   color: '#EF4444', bg: '#FEE2E2' },
 }
 
+const ACTION_CONFIG = {
+  claim:   { label: 'Claim Ticket',   color: '#1A56C4', icon: 'hand-left-outline'     as const },
+  resolve: { label: 'Resolve Ticket', color: '#10B981', icon: 'checkmark-circle-outline' as const },
+  approve: { label: 'Approve Ticket', color: '#F59E0B', icon: 'shield-checkmark-outline' as const },
+}
+
 export default function TicketDetailScreen() {
   const insets = useSafeAreaInsets()
   const router = useRouter()
@@ -31,6 +39,7 @@ export default function TicketDetailScreen() {
     ticket,
     isLoading,
     isError,
+    role,
     cancelModalVisible,
     setCancelModalVisible,
     additionalDetailExpanded,
@@ -40,7 +49,21 @@ export default function TicketDetailScreen() {
     handleCancel,
     isCancelling,
     canCancel,
+    canClaim,
+    canResolve,
+    canApprove,
+    actionModalVisible,
+    setActionModalVisible,
+    pendingAction,
+    actionComment,
+    setActionComment,
+    triggerAction,
+    confirmAction,
+    isActioning,
   } = useTicketDetail(id)
+
+  // Tentukan apakah ada action bar yang perlu ditampilkan
+  const hasActionBar = canCancel || canClaim || canResolve || canApprove
 
   if (isLoading) {
     return (
@@ -70,13 +93,11 @@ export default function TicketDetailScreen() {
       <StatusBar barStyle="light-content" backgroundColor="#1A56C4" />
       <Header id={id} onBack={() => router.back()} topInset={insets.top} />
 
-      {/* Scrollable content */}
       <ScrollView
         style={styles.body}
         contentContainerStyle={[
           styles.scrollContent,
-          // tambah padding bawah kalau cancel button muncul
-          canCancel && { paddingBottom: 100 },
+          hasActionBar && { paddingBottom: 100 },
         ]}
         showsVerticalScrollIndicator={false}
       >
@@ -91,26 +112,75 @@ export default function TicketDetailScreen() {
         <AssignedStaffCard ticket={ticket} />
       </ScrollView>
 
-      {/* Cancel Button — di luar ScrollView, di dalam SafeAreaView */}
-      {canCancel && (
+      {/* Action Bar — User: cancel; Staff: claim/resolve; Admin: approve */}
+      {hasActionBar && (
         <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12 }]}>
-          <TouchableOpacity
-            style={styles.cancelBtn}
-            onPress={() => setCancelModalVisible(true)}
-            activeOpacity={0.85}
-          >
-            <Ionicons name="close-circle-outline" size={18} color="#f5f2f3" />
-            <Text style={styles.cancelBtnText}>Cancel Ticket</Text>
-          </TouchableOpacity>
+          {canCancel && (
+            <TouchableOpacity
+              style={[styles.actionBtn, { backgroundColor: '#EF4444' }]}
+              onPress={() => setCancelModalVisible(true)}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="close-circle-outline" size={18} color="#fff" />
+              <Text style={styles.actionBtnText}>Cancel Ticket</Text>
+            </TouchableOpacity>
+          )}
+
+          {canClaim && (
+            <TouchableOpacity
+              style={[styles.actionBtn, { backgroundColor: '#1A56C4' }]}
+              onPress={() => triggerAction('claim')}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="hand-left-outline" size={18} color="#fff" />
+              <Text style={styles.actionBtnText}>Claim Ticket</Text>
+            </TouchableOpacity>
+          )}
+
+          {canResolve && (
+            <TouchableOpacity
+              style={[styles.actionBtn, { backgroundColor: '#10B981' }]}
+              onPress={() => triggerAction('resolve')}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="checkmark-circle-outline" size={18} color="#fff" />
+              <Text style={styles.actionBtnText}>Resolve Ticket</Text>
+            </TouchableOpacity>
+          )}
+
+          {canApprove && (
+            <TouchableOpacity
+              style={[styles.actionBtn, { backgroundColor: '#F59E0B' }]}
+              onPress={() => triggerAction('approve')}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="shield-checkmark-outline" size={18} color="#fff" />
+              <Text style={styles.actionBtnText}>Approve Ticket</Text>
+            </TouchableOpacity>
+          )}
         </View>
       )}
 
+      {/* Cancel Modal (User) */}
       <CancelModal
         visible={cancelModalVisible}
         onKeep={() => setCancelModalVisible(false)}
         onCancel={handleCancel}
         isLoading={isCancelling}
       />
+
+      {/* Action Modal (Staff/Admin) */}
+      {pendingAction && (
+        <ActionModal
+          visible={actionModalVisible}
+          action={pendingAction}
+          comment={actionComment}
+          onChangeComment={setActionComment}
+          onCancel={() => setActionModalVisible(false)}
+          onConfirm={confirmAction}
+          isLoading={isActioning}
+        />
+      )}
     </View>
   )
 }
@@ -129,7 +199,7 @@ function Header({ id, onBack, topInset }: { id: string; onBack: () => void; topI
       </TouchableOpacity>
       <View>
         <Text style={styles.headerTitle}>Ticket Detail</Text>
-        <Text style={styles.headerSubtitle}>No:  {id}</Text>
+        <Text style={styles.headerSubtitle}>No: {id}</Text>
       </View>
     </View>
   )
@@ -191,17 +261,11 @@ function TicketInfoCard({
 
       <TouchableOpacity style={styles.accordionRow} onPress={onToggleAdditionalDetail}>
         <Text style={styles.accordionLabel}>Additional Detail</Text>
-        <Ionicons
-          name={additionalDetailExpanded ? 'chevron-up' : 'chevron-down'}
-          size={16} color="#6B7280"
-        />
+        <Ionicons name={additionalDetailExpanded ? 'chevron-up' : 'chevron-down'} size={16} color="#6B7280" />
       </TouchableOpacity>
-
       {additionalDetailExpanded && (
         <View style={styles.accordionContent}>
-          <Text style={styles.accordionText}>
-            {ticket.description || 'Tidak ada deskripsi tambahan.'}
-          </Text>
+          <Text style={styles.accordionText}>{ticket.description || 'Tidak ada deskripsi tambahan.'}</Text>
         </View>
       )}
 
@@ -211,12 +275,8 @@ function TicketInfoCard({
         <Text style={styles.accordionLabel}>
           Attachments{ticket.attachments.length > 0 ? ` (${ticket.attachments.length})` : ''}
         </Text>
-        <Ionicons
-          name={attachmentsExpanded ? 'chevron-up' : 'chevron-down'}
-          size={16} color="#6B7280"
-        />
+        <Ionicons name={attachmentsExpanded ? 'chevron-up' : 'chevron-down'} size={16} color="#6B7280" />
       </TouchableOpacity>
-
       {attachmentsExpanded && (
         <View style={styles.accordionContent}>
           {ticket.attachments.length > 0 ? (
@@ -246,19 +306,13 @@ function StatusTimelineCard({ ticket }: { ticket: TicketDetail }) {
         </View>
         <View>
           <Text style={styles.sectionTitle}>Status Information</Text>
-          <Text style={styles.sectionSubtitle}>
-            Status Last Updated on : {ticket.statusLastUpdated}
-          </Text>
+          <Text style={styles.sectionSubtitle}>Status Last Updated on : {ticket.statusLastUpdated}</Text>
         </View>
       </View>
 
       <View style={styles.timelineContainer}>
         {ticket.timeline.map((step, index) => (
-          <TimelineItem
-            key={step.id}
-            step={step}
-            isLast={index === ticket.timeline.length - 1}
-          />
+          <TimelineItem key={step.id} step={step} isLast={index === ticket.timeline.length - 1} />
         ))}
       </View>
 
@@ -289,28 +343,19 @@ function TimelineItem({ step, isLast }: { step: TimelineStep; isLast: boolean })
           isActive && styles.timelineDotActive,
           isInactive && styles.timelineDotInactive,
         ]}>
-          {isCompleted && (
-            <Ionicons name="checkmark" size={13} color="#fff" />
-          )}
+          {isCompleted && <Ionicons name="checkmark" size={13} color="#fff" />}
           {isActive && <View style={styles.timelineDotInner} />}
         </View>
         {!isLast && (
-          <View style={[
-            styles.timelineLine,
-            (isCompleted || isActive) && styles.timelineLineActive,
-          ]} />
+          <View style={[styles.timelineLine, (isCompleted || isActive) && styles.timelineLineActive]} />
         )}
       </View>
       <View style={styles.timelineContent}>
         <Text style={[styles.timelineLabel, isInactive && styles.timelineLabelInactive]}>
           {step.label}
         </Text>
-        {step.description && (
-          <Text style={styles.timelineDescription}>{step.description}</Text>
-        )}
-        {step.timestamp && (
-          <Text style={styles.timelineTimestamp}>{step.timestamp}</Text>
-        )}
+        {step.description && <Text style={styles.timelineDescription}>{step.description}</Text>}
+        {step.timestamp && <Text style={styles.timelineTimestamp}>{step.timestamp}</Text>}
       </View>
     </View>
   )
@@ -326,9 +371,7 @@ function AssignedStaffCard({ ticket }: { ticket: TicketDetail }) {
       <View style={styles.staffRow}>
         <View style={styles.staffAvatar}>
           {hasStaff ? (
-            <Text style={styles.staffAvatarText}>
-              {ticket.assignedStaff!.name.charAt(0)}
-            </Text>
+            <Text style={styles.staffAvatarText}>{ticket.assignedStaff!.name.charAt(0)}</Text>
           ) : (
             <Ionicons name="person-outline" size={22} color="#9CA3AF" />
           )}
@@ -348,9 +391,7 @@ function AssignedStaffCard({ ticket }: { ticket: TicketDetail }) {
           <Ionicons name="chatbubble-ellipses-outline" size={15} color="#374151" />
           <Text style={styles.staffNotesLabel}>Notes From Staff</Text>
         </View>
-        <Text style={styles.staffNotesTime}>
-          {ticket.staffNotesTime ?? 'No Time Information'}
-        </Text>
+        <Text style={styles.staffNotesTime}>{ticket.staffNotesTime ?? 'No Time Information'}</Text>
       </View>
 
       <View style={styles.staffNotesBox}>
@@ -365,37 +406,95 @@ function AssignedStaffCard({ ticket }: { ticket: TicketDetail }) {
 // ─── Cancel Modal ──────────────────────────────────────────
 
 function CancelModal({
-  visible,
-  onKeep,
-  onCancel,
-  isLoading,
+  visible, onKeep, onCancel, isLoading,
 }: {
-  visible: boolean
-  onKeep: () => void
-  onCancel: () => void
-  isLoading: boolean
+  visible: boolean; onKeep: () => void; onCancel: () => void; isLoading: boolean
 }) {
   return (
     <Modal visible={visible} transparent animationType="fade">
       <View style={styles.modalOverlay}>
         <View style={styles.modalCard}>
-          <View style={styles.modalIconCircle}>
+          <View style={[styles.modalIconCircle, { backgroundColor: '#FEE2E2' }]}>
             <Ionicons name="alert" size={28} color="#EF4444" />
           </View>
           <Text style={styles.modalTitle}>Cancel Ticket?</Text>
-          <Text style={styles.modalSubtitle}>
-            Are you sure you want to cancel this ticket?
-          </Text>
+          <Text style={styles.modalSubtitle}>Are you sure you want to cancel this ticket?</Text>
           <View style={styles.modalButtons}>
-            <TouchableOpacity style={styles.modalKeepBtn} onPress={onKeep} disabled={isLoading}>
-              <Text style={styles.modalKeepText}>Keep Ticket</Text>
+            <TouchableOpacity style={styles.modalSecondaryBtn} onPress={onKeep} disabled={isLoading}>
+              <Text style={styles.modalSecondaryText}>Keep Ticket</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.modalCancelBtn} onPress={onCancel} disabled={isLoading}>
-              {isLoading ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <Text style={styles.modalCancelText}>Cancel Ticket</Text>
-              )}
+            <TouchableOpacity
+              style={[styles.modalPrimaryBtn, { backgroundColor: '#EF4444' }]}
+              onPress={onCancel}
+              disabled={isLoading}
+            >
+              {isLoading
+                ? <ActivityIndicator color="#fff" size="small" />
+                : <Text style={styles.modalPrimaryText}>Cancel Ticket</Text>
+              }
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  )
+}
+
+// ─── Action Modal (Claim / Resolve / Approve) ─────────────
+
+function ActionModal({
+  visible, action, comment, onChangeComment, onCancel, onConfirm, isLoading,
+}: {
+  visible: boolean
+  action: 'claim' | 'resolve' | 'approve'
+  comment: string
+  onChangeComment: (text: string) => void
+  onCancel: () => void
+  onConfirm: () => void
+  isLoading: boolean
+}) {
+  const cfg = ACTION_CONFIG[action]
+
+  return (
+    <Modal visible={visible} transparent animationType="fade">
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalCard}>
+          <View style={[styles.modalIconCircle, { backgroundColor: cfg.color + '20' }]}>
+            <Ionicons name={cfg.icon} size={28} color={cfg.color} />
+          </View>
+          <Text style={styles.modalTitle}>{cfg.label}?</Text>
+          <Text style={styles.modalSubtitle}>
+            {action === 'claim' && 'Ticket ini akan di-assign ke kamu.'}
+            {action === 'resolve' && 'Pastikan masalah sudah terselesaikan sebelum konfirmasi.'}
+            {action === 'approve' && 'Ticket akan disetujui dan diteruskan ke staff.'}
+          </Text>
+
+          {/* Comment optional */}
+          <TextInput
+            style={styles.commentInput}
+            placeholder="Tambah catatan (opsional)"
+            placeholderTextColor="#9CA3AF"
+            value={comment}
+            onChangeText={onChangeComment}
+            multiline
+            numberOfLines={3}
+            textAlignVertical="top"
+            maxLength={300}
+          />
+
+          <View style={styles.modalButtons}>
+            <TouchableOpacity style={styles.modalSecondaryBtn} onPress={onCancel} disabled={isLoading}>
+              <Text style={styles.modalSecondaryText}>Batal</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.modalPrimaryBtn, { backgroundColor: cfg.color }]}
+              onPress={onConfirm}
+              disabled={isLoading}
+            >
+              {isLoading
+                ? <ActivityIndicator color="#fff" size="small" />
+                : <Text style={styles.modalPrimaryText}>Konfirmasi</Text>
+              }
             </TouchableOpacity>
           </View>
         </View>
@@ -407,10 +506,7 @@ function CancelModal({
 // ─── Styles ────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  safeArea: { 
-  flex: 1, 
-  backgroundColor: '#F3F4F6'  // ← ganti jadi abu (warna body), bukan biru
-},
+  safeArea: { flex: 1, backgroundColor: '#F3F4F6' },
   centered: {
     flex: 1, justifyContent: 'center', alignItems: 'center',
     backgroundColor: '#F3F4F6', gap: 8,
@@ -418,14 +514,14 @@ const styles = StyleSheet.create({
   errorText: { fontSize: 15, color: '#6B7280', fontWeight: '500' },
 
   header: {
-  backgroundColor: '#1A56C4',
-  flexDirection: 'row',
-  alignItems: 'center',
-  paddingHorizontal: 20,
-  paddingTop: Platform.OS === 'android' ? 12 : 8,  // ← ini yang lama
-  paddingBottom: 20,
-  gap: 14,
-},
+    backgroundColor: '#1A56C4',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'android' ? 12 : 8,
+    paddingBottom: 20,
+    gap: 14,
+  },
   backBtn: {
     width: 36, height: 36, borderRadius: 18,
     backgroundColor: 'rgba(255,255,255,0.15)',
@@ -454,9 +550,7 @@ const styles = StyleSheet.create({
   badgeRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
   priorityBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
   priorityText: { fontSize: 11, fontWeight: '600' },
-  issueTypeBadge: {
-    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, backgroundColor: '#EFF6FF',
-  },
+  issueTypeBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, backgroundColor: '#EFF6FF' },
   issueTypeText: { fontSize: 11, fontWeight: '600', color: '#005B9E' },
   locationRow: { flexDirection: 'row', gap: 16, marginBottom: 12 },
   locationItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
@@ -491,10 +585,7 @@ const styles = StyleSheet.create({
   timelineDotActive: { backgroundColor: '#1A56C4', borderColor: '#1A56C4' },
   timelineDotInactive: { backgroundColor: '#fff', borderColor: '#D1D5DB' },
   timelineDotInner: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#fff' },
-  timelineLine: {
-    width: 2, flex: 1, minHeight: 20,
-    backgroundColor: '#E5E7EB', marginVertical: 2,
-  },
+  timelineLine: { width: 2, flex: 1, minHeight: 20, backgroundColor: '#E5E7EB', marginVertical: 2 },
   timelineLineActive: { backgroundColor: '#1A56C4' },
   timelineContent: { flex: 1, paddingBottom: 16 },
   timelineLabel: { fontSize: 14, fontWeight: '600', color: '#111827' },
@@ -524,35 +615,29 @@ const styles = StyleSheet.create({
   staffNotesBox: { backgroundColor: '#F9FAFB', borderRadius: 10, padding: 12 },
   staffNotesText: { fontSize: 13, color: '#6B7280', lineHeight: 20 },
 
-  // Ganti style bottomBar dan cancelBtn dengan ini:
+  bottomBar: {
+    backgroundColor: '#fff',
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: -3 },
+    elevation: 8,
+    gap: 8,
+  },
+  actionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderRadius: 28,
+    paddingVertical: 14,
+  },
+  actionBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
 
-bottomBar: {
-  backgroundColor: '#fff',           // ← dari '#1A56C4' jadi putih
-  paddingHorizontal: 20,
-  paddingTop: 12,
-  borderTopWidth: 1,
-  borderTopColor: '#E5E7EB',
-  shadowColor: '#000',
-  shadowOpacity: 0.06,
-  shadowRadius: 8,
-  shadowOffset: { width: 0, height: -3 },
-  elevation: 8,
-},
-cancelBtn: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: 8,
-  borderRadius: 28,
-  paddingVertical: 14,
-  backgroundColor: '#EF4444',        // ← dari transparan jadi merah solid
-  // borderWidth dihapus
-},
-cancelBtnText: { 
-  color: '#fff',                     // ← dari '#EF4444' jadi putih
-  fontSize: 15, 
-  fontWeight: '700' 
-},
   modalOverlay: {
     flex: 1, backgroundColor: 'rgba(0,0,0,0.45)',
     justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32,
@@ -563,22 +648,33 @@ cancelBtnText: {
   },
   modalIconCircle: {
     width: 56, height: 56, borderRadius: 28,
-    backgroundColor: '#FEE2E2',
     alignItems: 'center', justifyContent: 'center', marginBottom: 16,
   },
   modalTitle: { fontSize: 18, fontWeight: '700', color: '#111827', marginBottom: 8 },
   modalSubtitle: {
-    fontSize: 13, color: '#6B7280', textAlign: 'center', marginBottom: 24, lineHeight: 20,
+    fontSize: 13, color: '#6B7280', textAlign: 'center', marginBottom: 16, lineHeight: 20,
+  },
+  commentInput: {
+    width: '100%',
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 13,
+    color: '#111827',
+    minHeight: 80,
+    marginBottom: 20,
   },
   modalButtons: { flexDirection: 'row', gap: 12, width: '100%' },
-  modalKeepBtn: {
+  modalSecondaryBtn: {
     flex: 1, borderWidth: 1.5, borderColor: '#D1D5DB',
     borderRadius: 10, paddingVertical: 13, alignItems: 'center',
   },
-  modalKeepText: { fontSize: 14, fontWeight: '600', color: '#374151' },
-  modalCancelBtn: {
-    flex: 1, backgroundColor: '#1A56C4',
-    borderRadius: 10, paddingVertical: 13, alignItems: 'center',
+  modalSecondaryText: { fontSize: 14, fontWeight: '600', color: '#374151' },
+  modalPrimaryBtn: {
+    flex: 1, borderRadius: 10, paddingVertical: 13, alignItems: 'center',
   },
-  modalCancelText: { fontSize: 14, fontWeight: '600', color: '#fff' },
+  modalPrimaryText: { fontSize: 14, fontWeight: '600', color: '#fff' },
 })

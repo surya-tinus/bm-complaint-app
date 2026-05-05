@@ -73,6 +73,7 @@ const DynamicIcon = ({ config, size, color }: { config: IconConfig, size: number
 
 export function TicketCard({ ticket, onPress }: Props) {
   // 4. Panggil config icon-nya
+   console.log('ticket.priority:', ticket.priority)
   const iconConfig = getIssueTypeIcon(ticket.issueType.name)
   const color = getIssueTypeColor(ticket.issueType.name)
   const priority = PRIORITY_CONFIG[ticket.priority]

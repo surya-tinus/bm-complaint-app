@@ -1,8 +1,10 @@
+//src/services/api.ts
 import axios from 'axios'
 import { config } from '@/constants/config'
+import { useAuthStore } from '@/store/auth.store'
 
 export const api = axios.create({
-  baseURL: config.API_BASE_URL,
+  baseURL: config.API_BASE_URL  + '/api',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -13,8 +15,8 @@ export const api = axios.create({
 api.interceptors.request.use(
   (req) => {
     // TODO: uncomment ini kalau auth sudah siap
-    // const token = useAuthStore.getState().tokens?.accessToken
-    // if (token) req.headers.Authorization = `Bearer ${token}`
+    const token = useAuthStore.getState().tokens?.accessToken
+    if (token) req.headers.Authorization = `Bearer ${token}`
     return req
   },
   (error) => Promise.reject(error)

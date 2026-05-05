@@ -6,12 +6,13 @@ import { useNotificationStore } from '@/store/notification.store'
 
 // ─── Config ────────────────────────────────────────────────
 
-// Cara notifikasi ditampilkan saat app di foreground
 ExpoNotifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: true,
+    shouldShowBanner: true,  // tambah ini
+    shouldShowList: true,    // tambah ini
   }),
 })
 
