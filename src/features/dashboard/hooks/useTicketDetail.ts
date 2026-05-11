@@ -9,11 +9,13 @@ import {
   approveTicket,
 } from '@/services/ticket.service'
 import { useAuthStore } from '@/store/auth.store'
+import { Alert } from 'react-native'
 
 export const useTicketDetail = (id: string) => {
   const queryClient = useQueryClient()
   const user = useAuthStore((s) => s.user)
-  const role = user?.rolename // 'Admin' | 'Staff' | 'User'
+  const role = user?.role
+  const dept = user?.dept
 
   const [cancelModalVisible, setCancelModalVisible] = useState(false)
   const [actionModalVisible, setActionModalVisible] = useState(false)
@@ -27,6 +29,7 @@ export const useTicketDetail = (id: string) => {
     queryFn: () => getTicketById(id),
     enabled: !!id,
   })
+  console.log('raw ticket data:', JSON.stringify(query.data))
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['tickets'] })
@@ -72,12 +75,19 @@ export const useTicketDetail = (id: string) => {
     },
   })
 
-  // ─── Action trigger ────────────────────────────────────
+ // ─── Trigger dengan dept guard ─────────────────────────
   const triggerAction = (action: 'claim' | 'resolve' | 'approve') => {
-    setPendingAction(action)
-    setActionComment('')
-    setActionModalVisible(true)
+  if (action === 'claim' && role === 'Staff' && dept !== ticketDept) {
+    Alert.alert(
+      'Tidak dapat mengklaim tiket',
+      `Tiket ini untuk departemen ${ticketDept}, bukan ${dept}.`
+    )
+    return
   }
+  setPendingAction(action)
+  setActionComment('')
+  setActionModalVisible(true)
+}
 
   const confirmAction = () => {
     if (pendingAction === 'claim') claimMutation.mutate(actionComment || undefined)
@@ -86,28 +96,37 @@ export const useTicketDetail = (id: string) => {
   }
 
   // ─── Visibility logic ──────────────────────────────────
-  const status = query.data?.status_name ?? query.data?.status
-  const assignedStaffId = query.data?.assigned_staff_id ?? query.data?.staff_emplid
+const status = query.data?.status_name ?? query.data?.status
+console.log('DEBUG status:', status, '| role:', role)
+const assignedStaffEmplid =
+  query.data?.assignedStaff?.emplid ??  // dari getTicketById mapping
+  query.data?.assigned_staff_id ??       // ✅ fallback langsung ke raw field backend
+  null
 
-  const canCancel =
+const ticketDept = query.data?.scope_department ?? null  // ✅ pakai field yang ada di response
+
+const canClaim =
+  role === 'Staff' &&
+  !!dept &&           // ← tambah ini
+  !assignedStaffEmplid &&
+  dept === ticketDept
+
+const canResolve =
+  role === 'Staff' &&
+  assignedStaffEmplid === user?.emplid &&
+  ['In Progress', 'On Hold'].includes(status ?? '')
+
+const canApprove =
+  role === 'Admin' &&
+  status === 'Pending'
+
+   const canCancel =
     role === 'User' &&
     ['Open', 'Pending', 'On Hold', 'In Progress'].includes(status ?? '')
 
-  // Staff bisa claim kalau belum ada yang di-assign
-  const canClaim = role === 'Staff' && !assignedStaffId
-
-  // Staff bisa resolve kalau dia yang di-assign
-  const canResolve =
-    role === 'Staff' &&
-    assignedStaffId === user?.id &&
-    ['In Progress', 'On Hold'].includes(status ?? '')
-
-  // Admin bisa approve kalau status Pending
-  const canApprove = role === 'Admin' && status === 'Pending'
-
   const isActioning =
     claimMutation.isPending || resolveMutation.isPending || approveMutation.isPending
-
+  
   return {
     ticket: query.data,
     isLoading: query.isLoading,

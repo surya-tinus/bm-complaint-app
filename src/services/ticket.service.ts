@@ -4,6 +4,7 @@ import { config } from '@/constants/config'
 import { MOCK_TICKETS } from '@/mocks/dashboard.mock'
 import { MOCK_TICKET_DETAILS } from '@/mocks/ticketDetail.mock'
 import { PriorityLevel } from '@/features/dashboard/types'
+import { useAuthStore } from '@/store/auth.store'
 
 const delay = (ms: number) => new Promise((res) => setTimeout(res, ms))
 
@@ -21,6 +22,10 @@ export const getAllTickets = async (params?: {
   }
 
   const { data } = await api.get('/tickets', { params })
+  console.log('role dari store:', useAuthStore.getState().user?.role) // ✅ rolename → role
+  console.log('jumlah ticket:', data.data.length)
+  console.log('raw ticket[0]:', JSON.stringify(data.data[0]))
+
   return data.data.map((t: any) => ({
     ...t,
     id: String(t.id),
@@ -30,6 +35,7 @@ export const getAllTickets = async (params?: {
     issueType: { name: t.issue_type_name },
     place: { building: t.building, name: t.place_name },
     priority: t.priority as PriorityLevel,
+    staffEmplid: t.staff_emplid ?? null,
   }))
 }
 
@@ -45,6 +51,10 @@ export const getTicketById = async (id: string) => {
 
   const { data } = await api.get(`/tickets/${id}`)
   const t = data.data
+  console.log('assigned_staff_id:', t.assigned_staff_id)
+console.log('assignedStaff hasil mapping:', t.assigned_staff_id ? 'ada' : 'null')
+  const historyWithComment = t.history?.find((h: any) => h.comment !== null)
+
   return {
     ...t,
     id: String(t.id),
@@ -54,14 +64,14 @@ export const getTicketById = async (id: string) => {
     issueType: { name: t.issue_type_name },
     place: { building: t.building, name: t.place_name },
     priority: t.priority as PriorityLevel,
-    // field detail tambahan
-    assignedStaff: t.staff_emplid ? {
+    assignedStaff: t.assigned_staff_id ? {        // ✅ staff_emplid → assigned_staff_id
       name: t.assigned_staff_name ?? t.staff_email,
+      emplid: t.assigned_staff_id,                // ✅ field yang benar dari backend
       role: null,
     } : null,
-    staffNotes: t.history?.[0]?.comment ?? null,
-    staffNotesTime: t.history?.[0]?.created_at
-      ? new Date(t.history[0].created_at).toLocaleDateString('id-ID')
+    staffNotes: historyWithComment?.comment ?? null,           // ✅ cari yang ada comment-nya
+    staffNotesTime: historyWithComment?.created_at
+      ? new Date(historyWithComment.created_at).toLocaleDateString('id-ID')
       : null,
     additionalNotes: null,
     statusLastUpdated: new Date(t.updated_at).toLocaleDateString('id-ID'),

@@ -15,7 +15,7 @@ export const api = axios.create({
 api.interceptors.request.use(
   (req) => {
     // TODO: uncomment ini kalau auth sudah siap
-    const token = useAuthStore.getState().tokens?.accessToken
+    const token = useAuthStore.getState().token
     if (token) req.headers.Authorization = `Bearer ${token}`
     return req
   },

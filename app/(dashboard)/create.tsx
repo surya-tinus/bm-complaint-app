@@ -19,6 +19,7 @@ import { useRouter } from 'expo-router'
 import * as ImagePicker from 'expo-image-picker'
 import { useCreateTicket } from '@/features/dashboard/hooks/useCreateTicket'
 import { IssueTypeWithScope, Place } from '@/features/dashboard/types'
+import { Ionicons } from '@expo/vector-icons'
 import { MOCK_ISSUE_TYPES, MOCK_PLACES, MOCK_PLACES_BY_BUILDING } from '@/mocks/createTicket.mock'
 
 export default function CreateTicketScreen() {
@@ -174,7 +175,7 @@ function Step1IssueType({
             activeOpacity={0.85}
           >
             <View style={[styles.issueTypeIcon, isSelected && styles.issueTypeIconSelected]}>
-              <Text style={styles.issueTypeIconText}>{item.icon}</Text>
+              <Ionicons name={item.icon as any} size={22} color={isSelected ? '#1A56C4' : '#6B7280'} />
             </View>
             <View style={styles.issueTypeInfo}>
               <Text style={[styles.issueTypeName, isSelected && styles.issueTypeNameSelected]}>

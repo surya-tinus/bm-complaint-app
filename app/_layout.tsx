@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Stack } from 'expo-router'
 import { useNotificationSetup } from '@/features/notifications/hooks/useNotifications'
 
-const queryClient = new QueryClient()
+export const queryClient = new QueryClient()
 
 function AppWithNotifications() {
   useNotificationSetup()

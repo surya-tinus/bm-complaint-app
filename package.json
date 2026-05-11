@@ -1,6 +1,9 @@
 {
   "main": "expo-router/entry",
   "name": "complaint-app-bm",
+  "scripts": {
+  "start:local": "powershell -Command \"$ip = (Get-NetIPAddress -AddressFamily IPv4 -InterfaceAlias Wi-Fi).IPAddress; $env:EXPO_PUBLIC_API_URL='http://' + $ip + ':3000'; npx expo start -c"
+  },
   "dependencies": {
     "@tanstack/react-query": "^5.62.16",
     "axios": "^1.15.0",
@@ -22,4 +25,5 @@
     "@types/react": "~19.1.10",
     "typescript": "~5.9.2"
   }
+  
 }

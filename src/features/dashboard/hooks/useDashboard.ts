@@ -2,17 +2,17 @@
 import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { getAllTickets } from '@/services/ticket.service'
+import { useAuthStore } from '@/store/auth.store'
 
-export type FilterLabel = 'All' | 'Pending' | 'In Progress' | 'On Hold' | 'Resolved' | 'Open'
+export type FilterLabel = 'All' | 'Pending Assignment' | 'In Progress' | 'On Hold' | 'Resolved' | 'Open'
 
 export const FILTER_OPTIONS: FilterLabel[] = [
-  'All', 'Pending', 'In Progress', 'On Hold', 'Resolved', 'Open',
+  'All', 'Pending Assignment', 'In Progress', 'On Hold', 'Resolved', 'Open',
 ]
 
-// Sesuaikan dengan status_name dari backend
 const FILTER_STATUS_MAP: Record<FilterLabel, string | null> = {
   All: null,
-  Pending: 'Pending',
+  'Pending Assignment': 'Pending Assignment',
   'In Progress': 'In Progress',
   'On Hold': 'On Hold',
   Resolved: 'Resolved',
@@ -20,14 +20,45 @@ const FILTER_STATUS_MAP: Record<FilterLabel, string | null> = {
 }
 
 export function useDashboard() {
+  const user = useAuthStore((s) => s.user)
+  const role = user?.role                    // ✅ 'rolename' → 'role'
   const [searchQuery, setSearchQuery] = useState('')
   const [activeFilter, setActiveFilter] = useState<FilterLabel>('All')
 
-  const { data: tickets = [], isLoading, isError, refetch } = useQuery({
-    queryKey: ['tickets'],
-    queryFn: () => getAllTickets(),
-    staleTime: 1000 * 60 * 2, // 2 menit cache
-  })
+const { data: tickets = [], isLoading, isError, refetch } = useQuery({
+  queryKey: ['tickets', user?.emplid],  // ← tambah emplid
+  queryFn: () => getAllTickets(),
+  staleTime: 1000 * 60 * 2,
+  enabled: !!user?.emplid,              // ← jangan fetch kalau belum ada user
+})
+
+  // ⚠️ user.name tidak ada di auth store baru — hanya ada emplid & email
+  // Matching sekarang pakai emplid, tapi perlu backend juga return assigned_staff_emplid
+  // Sementara di-comment dulu bagian yang pakai user.name, ganti ke emplid
+  const assignedTickets = useMemo(() => {
+    if (role !== 'Staff') return []
+    return tickets.filter((t: any) => {
+      if (!t.assigned_staff_emplid) return false
+      return t.assigned_staff_emplid === user?.emplid  // ✅ pakai emplid
+    })
+  }, [tickets, role, user?.emplid])
+
+  const stats = useMemo(() => {
+    if (role !== 'Staff') return null
+    return {
+      assigned: tickets.filter((t: any) =>
+        t.assigned_staff_emplid === user?.emplid
+      ).length,
+      active: tickets.filter((t: any) =>
+        t.assigned_staff_emplid === user?.emplid &&
+        t.status_name === 'In Progress'
+      ).length,
+      completed: tickets.filter((t: any) =>
+        t.assigned_staff_emplid === user?.emplid &&
+        t.status_name === 'Resolved'
+      ).length,
+    }
+  }, [tickets, role, user?.emplid])
 
   const filteredTickets = useMemo(() => {
     const statusFilter = FILTER_STATUS_MAP[activeFilter]
@@ -38,21 +69,23 @@ export function useDashboard() {
       const matchesSearch =
         !q ||
         String(t.id).toLowerCase().includes(q) ||
-        (t.short_description?.toLowerCase().includes(q)) ||
-        (t.category_name?.toLowerCase().includes(q))
+        t.short_description?.toLowerCase().includes(q) ||
+        t.issue_type_name?.toLowerCase().includes(q) ||
+        t.building?.toLowerCase().includes(q) ||
+        t.place_name?.toLowerCase().includes(q)
 
       return matchesFilter && matchesSearch
     })
   }, [tickets, activeFilter, searchQuery])
 
   return {
-    searchQuery,
-    setSearchQuery,
-    activeFilter,
-    setActiveFilter,
+    searchQuery, setSearchQuery,
+    activeFilter, setActiveFilter,
     filteredTickets,
-    isLoading,
-    isError,
-    refetch,
+    assignedTickets,
+    stats,
+    role,
+    user,             // ✅ expose user langsung kalau komponen butuh emplid/email
+    isLoading, isError, refetch,
   }
 }

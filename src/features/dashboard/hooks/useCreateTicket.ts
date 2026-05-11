@@ -72,6 +72,9 @@ export const useCreateTicket = () => {
       queryClient.invalidateQueries({ queryKey: ['tickets'] })
       router.replace('/(dashboard)')
     },
+    onError: (error) => {
+    console.log('create error:', error) // ← tambah ini
+  },
   })
 
   return {

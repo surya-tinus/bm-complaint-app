@@ -1,3 +1,4 @@
+//src/features/dashboard/types.ts
 // ─── Enums (aligned to ERD) ────────────────────────────────
 
 export type PriorityLevel = 'low' | 'medium' | 'high'
