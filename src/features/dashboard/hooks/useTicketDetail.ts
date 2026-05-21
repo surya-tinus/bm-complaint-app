@@ -7,6 +7,7 @@ import {
   claimTicket,
   resolveTicket,
   approveTicket,
+  holdTicket
 } from '@/services/ticket.service'
 import { useAuthStore } from '@/store/auth.store'
 import { Alert } from 'react-native'
@@ -19,7 +20,7 @@ export const useTicketDetail = (id: string) => {
 
   const [cancelModalVisible, setCancelModalVisible] = useState(false)
   const [actionModalVisible, setActionModalVisible] = useState(false)
-  const [pendingAction, setPendingAction] = useState<'claim' | 'resolve' | 'approve' | null>(null)
+  const [pendingAction, setPendingAction] = useState<'claim' | 'resolve' | 'approve' | 'hold' | null>(null)
   const [actionComment, setActionComment] = useState('')
   const [additionalDetailExpanded, setAdditionalDetailExpanded] = useState(false)
   const [attachmentsExpanded, setAttachmentsExpanded] = useState(false)
@@ -75,8 +76,18 @@ export const useTicketDetail = (id: string) => {
     },
   })
 
+  // ─── Hold (Staff) ───────────────────────────────────
+  const holdMutation = useMutation({
+  mutationFn: (comment?: string) => holdTicket(id, comment),
+  onSuccess: () => {
+    setActionModalVisible(false)
+    setActionComment('')
+    invalidate()
+  },
+})
+
  // ─── Trigger dengan dept guard ─────────────────────────
-  const triggerAction = (action: 'claim' | 'resolve' | 'approve') => {
+  const triggerAction = (action: 'claim' | 'resolve' | 'approve' | 'hold') => {
   if (action === 'claim' && role === 'Staff' && dept !== ticketDept) {
     Alert.alert(
       'Tidak dapat mengklaim tiket',
@@ -90,10 +101,11 @@ export const useTicketDetail = (id: string) => {
 }
 
   const confirmAction = () => {
-    if (pendingAction === 'claim') claimMutation.mutate(actionComment || undefined)
-    else if (pendingAction === 'resolve') resolveMutation.mutate(actionComment || undefined)
-    else if (pendingAction === 'approve') approveMutation.mutate(actionComment || undefined)
-  }
+  if (pendingAction === 'claim') claimMutation.mutate(actionComment || undefined)
+  else if (pendingAction === 'resolve') resolveMutation.mutate(actionComment || undefined)
+  else if (pendingAction === 'approve') approveMutation.mutate(actionComment || undefined)
+  else if (pendingAction === 'hold') holdMutation.mutate(actionComment || undefined)
+}
 
   // ─── Visibility logic ──────────────────────────────────
 const status = query.data?.status_name ?? query.data?.status
@@ -121,11 +133,17 @@ const canApprove =
   status === 'Pending'
 
    const canCancel =
-    role === 'User' &&
-    ['Open', 'Pending', 'On Hold', 'In Progress'].includes(status ?? '')
+  role === 'User' &&
+  !['Resolved', 'Cancelled', 'Rejected'].includes(status ?? '')
+  
+  const canHold =
+  role === 'Staff' &&
+  assignedStaffEmplid === user?.emplid &&
+  status === 'In Progress'
+
 
   const isActioning =
-    claimMutation.isPending || resolveMutation.isPending || approveMutation.isPending
+  claimMutation.isPending || resolveMutation.isPending || approveMutation.isPending || holdMutation.isPending
   
   return {
     ticket: query.data,
@@ -153,6 +171,7 @@ const canApprove =
     triggerAction,
     confirmAction,
     isActioning,
+    canHold,
 
     // UI state
     additionalDetailExpanded,

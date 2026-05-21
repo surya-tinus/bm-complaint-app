@@ -106,10 +106,8 @@ export const cancelTicket = async (id: string) => {
     return
   }
 
-  // TODO: uncomment saat backend sudah siap
-  // const { data } = await api.post(`/tickets/${id}/cancel`)
-  // return data
-  throw new Error('Cancel ticket belum tersedia di backend')
+  const { data } = await api.post(`/tickets/${id}/cancel`)
+  return data
 }
 
 // ─── CLAIM TICKET (Staff) ──────────────────────────────────
@@ -145,5 +143,27 @@ export const approveTicket = async (id: string, comment?: string) => {
   }
 
   const { data } = await api.post(`/tickets/${id}/approve`, { comment })
+  return data
+}
+
+// ─── REJECT TICKET (Admin) ────────────────────────────────
+
+export const rejectTicket = async (id: string, reason: string) => {
+  if (config.USE_MOCK) { await delay(800); return }
+  const { data } = await api.post(`/tickets/${id}/reject`, { reason })
+  return data
+}
+
+// ─── HOLD TICKET (Staff) ────────────────────────────────
+export const holdTicket = async (id: string, comment?: string) => {
+  if (config.USE_MOCK) { await delay(800); return }
+  const { data } = await api.post(`/tickets/${id}/hold`, { comment })
+  return data
+}
+
+// ─── ADDITIONAL NOTE (Staff) ────────────────────────────────
+export const addInfo = async (id: string, comment: string) => {
+  if (config.USE_MOCK) { await delay(800); return }
+  const { data } = await api.post(`/tickets/${id}/addInfo`, { comment })
   return data
 }

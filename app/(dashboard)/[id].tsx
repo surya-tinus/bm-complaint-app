@@ -29,6 +29,7 @@ const ACTION_CONFIG = {
   claim:   { label: 'Claim Ticket',   color: '#1A56C4', icon: 'hand-left-outline'     as const },
   resolve: { label: 'Resolve Ticket', color: '#10B981', icon: 'checkmark-circle-outline' as const },
   approve: { label: 'Approve Ticket', color: '#F59E0B', icon: 'shield-checkmark-outline' as const },
+  hold: { label: 'Hold Ticket', color: '#F59E0B', icon: 'pause-circle-outline' as const },
 }
 
 export default function TicketDetailScreen() {
@@ -60,10 +61,11 @@ export default function TicketDetailScreen() {
     triggerAction,
     confirmAction,
     isActioning,
+    canHold,
   } = useTicketDetail(id)
 
   // Tentukan apakah ada action bar yang perlu ditampilkan
-  const hasActionBar = canCancel || canClaim || canResolve || canApprove
+  const hasActionBar = canCancel || canClaim || canResolve || canApprove || canHold
 
   if (isLoading) {
     return (
@@ -147,6 +149,17 @@ export default function TicketDetailScreen() {
               <Text style={styles.actionBtnText}>Resolve Ticket</Text>
             </TouchableOpacity>
           )}
+
+          {canHold && (
+  <TouchableOpacity
+    style={[styles.actionBtn, { backgroundColor: '#F59E0B' }]}
+    onPress={() => triggerAction('hold')}
+    activeOpacity={0.85}
+  >
+    <Ionicons name="pause-circle-outline" size={18} color="#fff" />
+    <Text style={styles.actionBtnText}>Hold Ticket</Text>
+  </TouchableOpacity>
+)}
 
           {canApprove && (
             <TouchableOpacity
@@ -446,7 +459,7 @@ function ActionModal({
   visible, action, comment, onChangeComment, onCancel, onConfirm, isLoading,
 }: {
   visible: boolean
-  action: 'claim' | 'resolve' | 'approve'
+  action:  'claim' | 'resolve' | 'approve' | 'hold'
   comment: string
   onChangeComment: (text: string) => void
   onCancel: () => void
@@ -465,8 +478,9 @@ function ActionModal({
           <Text style={styles.modalTitle}>{cfg.label}?</Text>
           <Text style={styles.modalSubtitle}>
             {action === 'claim' && 'Ticket ini akan di-assign ke kamu.'}
-            {action === 'resolve' && 'Pastikan masalah sudah terselesaikan sebelum konfirmasi.'}
-            {action === 'approve' && 'Ticket akan disetujui dan diteruskan ke staff.'}
+{action === 'resolve' && 'Pastikan masalah sudah terselesaikan sebelum konfirmasi.'}
+{action === 'approve' && 'Ticket akan disetujui dan diteruskan ke staff.'}
+{action === 'hold' && 'Penanganan tiket akan dijeda sementara.'}
           </Text>
 
           {/* Comment optional */}
