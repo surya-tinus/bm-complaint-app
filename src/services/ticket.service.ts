@@ -41,6 +41,19 @@ export const getAllTickets = async (params?: {
 
 // ─── GET TICKET BY ID ──────────────────────────────────────
 
+const ACTION_LABEL: Record<string, string> = {
+  CREATE_TICKET:   'Tiket Dibuat',
+  APPROVE_TICKET:  'Tiket Disetujui',
+  ASSIGN_STAFF:    'Staff Ditugaskan',
+  CLAIM_TICKET:    'Tiket Diklaim',
+  HOLD_TICKET:     'Tiket Di-hold',
+  ADD_INFORMATION: 'Informasi Ditambahkan',
+  RESOLVE_TICKET:  'Tiket Diselesaikan',
+  CANCEL_TICKET:   'Tiket Dibatalkan',
+  REJECT_TICKET:   'Tiket Ditolak',
+  UPDATE_TICKET:   'Tiket Diperbarui',
+}
+
 export const getTicketById = async (id: string) => {
   if (config.USE_MOCK) {
     await delay(500)
@@ -51,8 +64,23 @@ export const getTicketById = async (id: string) => {
 
   const { data } = await api.get(`/tickets/${id}`)
   const t = data.data
-  console.log('assigned_staff_id:', t.assigned_staff_id)
-console.log('assignedStaff hasil mapping:', t.assigned_staff_id ? 'ada' : 'null')
+
+  // Timeline — balik dari DESC ke ASC, entry terbaru = active
+  const chronological = [...(t.history ?? [])].reverse()
+  const timeline = chronological.map((h: any, index: number) => ({
+    id: String(h.id),
+    label: ACTION_LABEL[h.action_name] ?? h.action_name,
+    description: h.comment ?? undefined,
+    timestamp: new Date(h.created_at).toLocaleString('id-ID', {
+      day: '2-digit', month: 'short', year: 'numeric',
+      hour: '2-digit', minute: '2-digit',
+    }),
+    status: index === chronological.length - 1 ? 'active' : 'completed',
+    changedBy: h.changed_by_name ?? undefined,
+    attachments: h.attachments ?? [],
+  }))
+
+  // Staff notes — ambil dari history yang punya comment, terbaru
   const historyWithComment = t.history?.find((h: any) => h.comment !== null)
 
   return {
@@ -64,18 +92,18 @@ console.log('assignedStaff hasil mapping:', t.assigned_staff_id ? 'ada' : 'null'
     issueType: { name: t.issue_type_name },
     place: { building: t.building, name: t.place_name },
     priority: t.priority as PriorityLevel,
-    assignedStaff: t.assigned_staff_id ? {        // ✅ staff_emplid → assigned_staff_id
+    assignedStaff: t.assigned_staff_id ? {
       name: t.assigned_staff_name ?? t.staff_email,
-      emplid: t.assigned_staff_id,                // ✅ field yang benar dari backend
+      emplid: t.assigned_staff_id,
       role: null,
     } : null,
-    staffNotes: historyWithComment?.comment ?? null,           // ✅ cari yang ada comment-nya
+    staffNotes: historyWithComment?.comment ?? null,
     staffNotesTime: historyWithComment?.created_at
       ? new Date(historyWithComment.created_at).toLocaleDateString('id-ID')
       : null,
     additionalNotes: null,
     statusLastUpdated: new Date(t.updated_at).toLocaleDateString('id-ID'),
-    timeline: [],
+    timeline,
     attachments: [],
   }
 }

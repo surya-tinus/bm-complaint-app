@@ -368,6 +368,9 @@ function TimelineItem({ step, isLast }: { step: TimelineStep; isLast: boolean })
           {step.label}
         </Text>
         {step.description && <Text style={styles.timelineDescription}>{step.description}</Text>}
+        {step.changedBy && (
+  <Text style={styles.timelineChangedBy}>oleh {step.changedBy}</Text>
+)}
         {step.timestamp && <Text style={styles.timelineTimestamp}>{step.timestamp}</Text>}
       </View>
     </View>
@@ -606,6 +609,7 @@ const styles = StyleSheet.create({
   timelineLabelInactive: { color: '#9CA3AF', fontWeight: '500' },
   timelineDescription: { fontSize: 12, color: '#6B7280', marginTop: 2 },
   timelineTimestamp: { fontSize: 11, color: '#9CA3AF', marginTop: 3 },
+  timelineChangedBy: { fontSize: 11, color: '#9CA3AF', marginTop: 2, fontStyle: 'italic' },
 
   notesRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-start' },
   notesLabel: { fontSize: 13, fontWeight: '600', color: '#111827', marginBottom: 2 },

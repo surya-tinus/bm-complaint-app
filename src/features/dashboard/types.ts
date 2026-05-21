@@ -75,8 +75,12 @@ export interface TimelineStep {
   label: string
   description?: string
   timestamp?: string
-  changedBy?: string
-  status: TimelineStepStatus
+  status: 'completed' | 'active' | 'inactive'
+  changedBy?: string        // ← tambah
+  attachments?: {           // ← tambah
+    file_name: string
+    file_path: string
+  }[]
 }
 
 // ─── Ticket (list view) ────────────────────────────────────
