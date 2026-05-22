@@ -7,7 +7,8 @@ import {
   claimTicket,
   resolveTicket,
   approveTicket,
-  holdTicket
+  holdTicket,
+  addInfo,
 } from '@/services/ticket.service'
 import { useAuthStore } from '@/store/auth.store'
 import { Alert } from 'react-native'
@@ -20,7 +21,7 @@ export const useTicketDetail = (id: string) => {
 
   const [cancelModalVisible, setCancelModalVisible] = useState(false)
   const [actionModalVisible, setActionModalVisible] = useState(false)
-  const [pendingAction, setPendingAction] = useState<'claim' | 'resolve' | 'approve' | 'hold' | null>(null)
+  const [pendingAction, setPendingAction] = useState<'claim' | 'resolve' | 'approve' | 'hold' | 'addInfo' | null>(null)
   const [actionComment, setActionComment] = useState('')
   const [additionalDetailExpanded, setAdditionalDetailExpanded] = useState(false)
   const [attachmentsExpanded, setAttachmentsExpanded] = useState(false)
@@ -54,6 +55,10 @@ export const useTicketDetail = (id: string) => {
       setActionComment('')
       invalidate()
     },
+    onError: (error: any) => {
+    console.log('claim error:', error?.response?.data)
+    Alert.alert('Gagal', error?.response?.data?.message ?? 'Terjadi kesalahan')
+  },
   })
 
   // ─── Resolve (Staff) ───────────────────────────────────
@@ -76,6 +81,16 @@ export const useTicketDetail = (id: string) => {
     },
   })
 
+  // ─── Add Info (User/Staff saat On Hold) ───────────────────
+const addInfoMutation = useMutation({
+  mutationFn: (comment: string) => addInfo(id, comment),
+  onSuccess: () => {
+    setActionModalVisible(false)
+    setActionComment('')
+    invalidate()
+  },
+})
+
   // ─── Hold (Staff) ───────────────────────────────────
   const holdMutation = useMutation({
   mutationFn: (comment?: string) => holdTicket(id, comment),
@@ -87,7 +102,7 @@ export const useTicketDetail = (id: string) => {
 })
 
  // ─── Trigger dengan dept guard ─────────────────────────
-  const triggerAction = (action: 'claim' | 'resolve' | 'approve' | 'hold') => {
+const triggerAction = (action: 'claim' | 'resolve' | 'approve' | 'hold' | 'addInfo') => {
   if (action === 'claim' && role === 'Staff' && dept !== ticketDept) {
     Alert.alert(
       'Tidak dapat mengklaim tiket',
@@ -100,11 +115,13 @@ export const useTicketDetail = (id: string) => {
   setActionModalVisible(true)
 }
 
-  const confirmAction = () => {
+  // update confirmAction
+const confirmAction = () => {
   if (pendingAction === 'claim') claimMutation.mutate(actionComment || undefined)
   else if (pendingAction === 'resolve') resolveMutation.mutate(actionComment || undefined)
   else if (pendingAction === 'approve') approveMutation.mutate(actionComment || undefined)
   else if (pendingAction === 'hold') holdMutation.mutate(actionComment || undefined)
+  else if (pendingAction === 'addInfo') addInfoMutation.mutate(actionComment)
 }
 
   // ─── Visibility logic ──────────────────────────────────
@@ -121,7 +138,8 @@ const canClaim =
   role === 'Staff' &&
   !!dept &&           // ← tambah ini
   !assignedStaffEmplid &&
-  dept === ticketDept
+  dept === ticketDept &&
+  status === 'Pending Assignment'
 
 const canResolve =
   role === 'Staff' &&
@@ -135,15 +153,23 @@ const canApprove =
    const canCancel =
   role === 'User' &&
   !['Resolved', 'Cancelled', 'Rejected'].includes(status ?? '')
-  
+
+  const canAddInfo =
+  status === 'On Hold' &&
+  (
+    (role === 'User' && query.data?.ticket_owner_id === user?.emplid) ||
+    (role === 'Staff' && assignedStaffEmplid === user?.emplid)
+  )
+
+const isActioning =
+  claimMutation.isPending || resolveMutation.isPending ||
+  approveMutation.isPending || holdMutation.isPending ||
+  addInfoMutation.isPending   // ← tambah
+
   const canHold =
   role === 'Staff' &&
   assignedStaffEmplid === user?.emplid &&
   status === 'In Progress'
-
-
-  const isActioning =
-  claimMutation.isPending || resolveMutation.isPending || approveMutation.isPending || holdMutation.isPending
   
   return {
     ticket: query.data,
@@ -172,6 +198,8 @@ const canApprove =
     confirmAction,
     isActioning,
     canHold,
+    canAddInfo,
+    
 
     // UI state
     additionalDetailExpanded,

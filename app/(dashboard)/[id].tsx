@@ -26,10 +26,11 @@ const PRIORITY_CONFIG: Record<PriorityLevel, { label: string; color: string; bg:
 }
 
 const ACTION_CONFIG = {
-  claim:   { label: 'Claim Ticket',   color: '#1A56C4', icon: 'hand-left-outline'     as const },
-  resolve: { label: 'Resolve Ticket', color: '#10B981', icon: 'checkmark-circle-outline' as const },
-  approve: { label: 'Approve Ticket', color: '#F59E0B', icon: 'shield-checkmark-outline' as const },
-  hold: { label: 'Hold Ticket', color: '#F59E0B', icon: 'pause-circle-outline' as const },
+  claim:   { label: 'Claim Ticket',    color: '#1A56C4', icon: 'hand-left-outline'          as const },
+  resolve: { label: 'Resolve Ticket',  color: '#10B981', icon: 'checkmark-circle-outline'   as const },
+  approve: { label: 'Approve Ticket',  color: '#F59E0B', icon: 'shield-checkmark-outline'   as const },
+  hold:    { label: 'Hold Ticket',     color: '#F59E0B', icon: 'pause-circle-outline'        as const },
+  addInfo: { label: 'Add Information', color: '#8B5CF6', icon: 'information-circle-outline' as const },
 }
 
 export default function TicketDetailScreen() {
@@ -53,6 +54,8 @@ export default function TicketDetailScreen() {
     canClaim,
     canResolve,
     canApprove,
+    canHold,
+    canAddInfo,
     actionModalVisible,
     setActionModalVisible,
     pendingAction,
@@ -61,11 +64,9 @@ export default function TicketDetailScreen() {
     triggerAction,
     confirmAction,
     isActioning,
-    canHold,
   } = useTicketDetail(id)
 
-  // Tentukan apakah ada action bar yang perlu ditampilkan
-  const hasActionBar = canCancel || canClaim || canResolve || canApprove || canHold
+  const hasActionBar = canCancel || canClaim || canResolve || canApprove || canHold || canAddInfo
 
   if (isLoading) {
     return (
@@ -114,7 +115,7 @@ export default function TicketDetailScreen() {
         <AssignedStaffCard ticket={ticket} />
       </ScrollView>
 
-      {/* Action Bar — User: cancel; Staff: claim/resolve; Admin: approve */}
+      {/* Action Bar */}
       {hasActionBar && (
         <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12 }]}>
           {canCancel && (
@@ -127,7 +128,6 @@ export default function TicketDetailScreen() {
               <Text style={styles.actionBtnText}>Cancel Ticket</Text>
             </TouchableOpacity>
           )}
-
           {canClaim && (
             <TouchableOpacity
               style={[styles.actionBtn, { backgroundColor: '#1A56C4' }]}
@@ -138,7 +138,6 @@ export default function TicketDetailScreen() {
               <Text style={styles.actionBtnText}>Claim Ticket</Text>
             </TouchableOpacity>
           )}
-
           {canResolve && (
             <TouchableOpacity
               style={[styles.actionBtn, { backgroundColor: '#10B981' }]}
@@ -149,18 +148,26 @@ export default function TicketDetailScreen() {
               <Text style={styles.actionBtnText}>Resolve Ticket</Text>
             </TouchableOpacity>
           )}
-
           {canHold && (
-  <TouchableOpacity
-    style={[styles.actionBtn, { backgroundColor: '#F59E0B' }]}
-    onPress={() => triggerAction('hold')}
-    activeOpacity={0.85}
-  >
-    <Ionicons name="pause-circle-outline" size={18} color="#fff" />
-    <Text style={styles.actionBtnText}>Hold Ticket</Text>
-  </TouchableOpacity>
-)}
-
+            <TouchableOpacity
+              style={[styles.actionBtn, { backgroundColor: '#F59E0B' }]}
+              onPress={() => triggerAction('hold')}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="pause-circle-outline" size={18} color="#fff" />
+              <Text style={styles.actionBtnText}>Hold Ticket</Text>
+            </TouchableOpacity>
+          )}
+          {canAddInfo && (
+            <TouchableOpacity
+              style={[styles.actionBtn, { backgroundColor: '#8B5CF6' }]}
+              onPress={() => triggerAction('addInfo')}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="information-circle-outline" size={18} color="#fff" />
+              <Text style={styles.actionBtnText}>Add Information</Text>
+            </TouchableOpacity>
+          )}
           {canApprove && (
             <TouchableOpacity
               style={[styles.actionBtn, { backgroundColor: '#F59E0B' }]}
@@ -182,7 +189,7 @@ export default function TicketDetailScreen() {
         isLoading={isCancelling}
       />
 
-      {/* Action Modal (Staff/Admin) */}
+      {/* Action Modal (Staff/Admin/User) */}
       {pendingAction && (
         <ActionModal
           visible={actionModalVisible}
@@ -329,7 +336,7 @@ function StatusTimelineCard({ ticket }: { ticket: TicketDetail }) {
         ))}
       </View>
 
-      <View style={styles.notesRow}>
+      {/* <View style={styles.notesRow}>
         <Ionicons name="clipboard-outline" size={16} color="#6B7280" />
         <View style={{ flex: 1 }}>
           <Text style={styles.notesLabel}>Additional Notes :</Text>
@@ -337,7 +344,7 @@ function StatusTimelineCard({ ticket }: { ticket: TicketDetail }) {
             {ticket.additionalNotes ?? 'No additional notes were provided by staff.'}
           </Text>
         </View>
-      </View>
+      </View> */}
     </View>
   )
 }
@@ -368,9 +375,7 @@ function TimelineItem({ step, isLast }: { step: TimelineStep; isLast: boolean })
           {step.label}
         </Text>
         {step.description && <Text style={styles.timelineDescription}>{step.description}</Text>}
-        {step.changedBy && (
-  <Text style={styles.timelineChangedBy}>oleh {step.changedBy}</Text>
-)}
+        {step.changedBy && <Text style={styles.timelineChangedBy}>oleh {step.changedBy}</Text>}
         {step.timestamp && <Text style={styles.timelineTimestamp}>{step.timestamp}</Text>}
       </View>
     </View>
@@ -456,13 +461,13 @@ function CancelModal({
   )
 }
 
-// ─── Action Modal (Claim / Resolve / Approve) ─────────────
+// ─── Action Modal ─────────────────────────────────────────
 
 function ActionModal({
   visible, action, comment, onChangeComment, onCancel, onConfirm, isLoading,
 }: {
   visible: boolean
-  action:  'claim' | 'resolve' | 'approve' | 'hold'
+  action: 'claim' | 'resolve' | 'approve' | 'hold' | 'addInfo'
   comment: string
   onChangeComment: (text: string) => void
   onCancel: () => void
@@ -470,6 +475,16 @@ function ActionModal({
   isLoading: boolean
 }) {
   const cfg = ACTION_CONFIG[action]
+  const requiresComment = action === 'hold' || action === 'addInfo'
+  const canSubmit = !requiresComment || comment.trim().length > 0
+
+  const SUBTITLE: Record<typeof action, string> = {
+    claim:   'Ticket ini akan di-assign ke kamu.',
+    resolve: 'Pastikan masalah sudah terselesaikan sebelum konfirmasi.',
+    approve: 'Ticket akan disetujui dan diteruskan ke staff.',
+    hold:    'Penanganan tiket akan dijeda sementara.',
+    addInfo: 'Tambahkan informasi untuk melanjutkan penanganan tiket.',
+  }
 
   return (
     <Modal visible={visible} transparent animationType="fade">
@@ -479,17 +494,11 @@ function ActionModal({
             <Ionicons name={cfg.icon} size={28} color={cfg.color} />
           </View>
           <Text style={styles.modalTitle}>{cfg.label}?</Text>
-          <Text style={styles.modalSubtitle}>
-            {action === 'claim' && 'Ticket ini akan di-assign ke kamu.'}
-{action === 'resolve' && 'Pastikan masalah sudah terselesaikan sebelum konfirmasi.'}
-{action === 'approve' && 'Ticket akan disetujui dan diteruskan ke staff.'}
-{action === 'hold' && 'Penanganan tiket akan dijeda sementara.'}
-          </Text>
+          <Text style={styles.modalSubtitle}>{SUBTITLE[action]}</Text>
 
-          {/* Comment optional */}
           <TextInput
             style={styles.commentInput}
-            placeholder="Tambah catatan (opsional)"
+            placeholder={requiresComment ? 'Catatan wajib diisi' : 'Tambah catatan (opsional)'}
             placeholderTextColor="#9CA3AF"
             value={comment}
             onChangeText={onChangeComment}
@@ -504,9 +513,9 @@ function ActionModal({
               <Text style={styles.modalSecondaryText}>Batal</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.modalPrimaryBtn, { backgroundColor: cfg.color }]}
+              style={[styles.modalPrimaryBtn, { backgroundColor: canSubmit ? cfg.color : '#9CA3AF' }]}
               onPress={onConfirm}
-              disabled={isLoading}
+              disabled={isLoading || !canSubmit}
             >
               {isLoading
                 ? <ActivityIndicator color="#fff" size="small" />
@@ -608,8 +617,8 @@ const styles = StyleSheet.create({
   timelineLabel: { fontSize: 14, fontWeight: '600', color: '#111827' },
   timelineLabelInactive: { color: '#9CA3AF', fontWeight: '500' },
   timelineDescription: { fontSize: 12, color: '#6B7280', marginTop: 2 },
-  timelineTimestamp: { fontSize: 11, color: '#9CA3AF', marginTop: 3 },
   timelineChangedBy: { fontSize: 11, color: '#9CA3AF', marginTop: 2, fontStyle: 'italic' },
+  timelineTimestamp: { fontSize: 11, color: '#9CA3AF', marginTop: 3 },
 
   notesRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-start' },
   notesLabel: { fontSize: 13, fontWeight: '600', color: '#111827', marginBottom: 2 },

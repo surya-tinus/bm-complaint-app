@@ -65,6 +65,16 @@ export const getTicketById = async (id: string) => {
   const { data } = await api.get(`/tickets/${id}`)
   const t = data.data
 
+  // Ambil semua attachments dari semua history entry, flatten jadi satu array
+const attachments = (t.history ?? []).flatMap((h: any, histIndex: number) =>
+  (h.attachments ?? []).map((att: any, attIndex: number) => ({
+    id: histIndex * 100 + attIndex,
+    historyId: h.id,
+    fileName: att.file_name,
+    filePath: att.file_path,
+  }))
+)
+
   // Timeline — balik dari DESC ke ASC, entry terbaru = active
   const chronological = [...(t.history ?? [])].reverse()
   const timeline = chronological.map((h: any, index: number) => ({
@@ -104,7 +114,7 @@ export const getTicketById = async (id: string) => {
     additionalNotes: null,
     statusLastUpdated: new Date(t.updated_at).toLocaleDateString('id-ID'),
     timeline,
-    attachments: [],
+    attachments,
   }
 }
 
@@ -116,13 +126,34 @@ export const createTicket = async (payload: {
   short_description: string
   description: string
   priority: string
+  attachmentUris?: string[]
 }) => {
   if (config.USE_MOCK) {
     await delay(1000)
     return { id: 'TKT-MOCK-001', ...payload }
   }
 
-  const { data } = await api.post('/tickets', payload)
+  const form = new FormData()
+  form.append('issue_type_id', String(payload.issue_type_id))
+  form.append('place_id', String(payload.place_id))
+  form.append('short_description', payload.short_description)
+  form.append('description', payload.description)
+  form.append('priority', payload.priority)
+
+  payload.attachmentUris?.forEach((uri, index) => {
+    const filename = uri.split('/').pop() ?? `photo_${index}.jpg`
+    const ext = filename.split('.').pop()?.toLowerCase() ?? 'jpg'
+    const mimeType = ext === 'png' ? 'image/png' : 'image/jpeg'
+    form.append('attachments', {
+      uri,
+      name: filename,
+      type: mimeType,
+    } as any)
+  })
+
+  const { data } = await api.post('/tickets', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
   return data
 }
 

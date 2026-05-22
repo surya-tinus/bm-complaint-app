@@ -59,13 +59,14 @@ export const useCreateTicket = () => {
 
   const mutation = useMutation({
     mutationFn: () =>
-      createTicket({
-        issue_type_id: form.selectedIssueType!.id,
-        place_id: form.placeId!,
-        short_description: form.shortDescription.trim(),
-        description: form.description.trim(),
-        priority: form.selectedIssueType!.defaultPriority,
-      }),
+  createTicket({
+    issue_type_id: form.selectedIssueType!.id,
+    place_id: form.placeId!,
+    short_description: form.shortDescription.trim(),
+    description: form.description.trim(),
+    priority: form.selectedIssueType!.defaultPriority,
+    attachmentUris: form.attachmentUris,   // ← tambah
+  }),
     onSuccess: () => {
       setConfirmModalVisible(false)
       // Invalidate list tiket supaya auto-refresh

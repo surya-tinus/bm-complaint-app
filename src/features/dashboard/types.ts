@@ -53,7 +53,7 @@ export interface TicketOwner {
 }
 
 export interface AssignedStaff {
-  id: string
+  emplid: string
   name: string
   role?: string
   avatarUrl?: string
