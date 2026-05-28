@@ -1,5 +1,5 @@
 // app/(dashboard)/[id].tsx
-import React from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import {
   View,
   Text,
@@ -11,6 +11,10 @@ import {
   Modal,
   ActivityIndicator,
   TextInput,
+  Image,
+  FlatList,
+  Dimensions,
+  Animated,
 } from 'react-native'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
@@ -18,6 +22,18 @@ import { useTicketDetail } from '@/features/dashboard/hooks/useTicketDetail'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { TicketDetail, TimelineStep, PriorityLevel } from '@/features/dashboard/types'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { config } from '@/constants/config'
+import { useAuthStore } from '@/store/auth.store'
+import { fetchAuthenticatedImage } from '@/utils/imageCache'
+import { TicketDetailSkeleton, SkeletonBox } from '@/components/ui/Skeleton'
+import {
+  PinchGestureHandler,
+  PanGestureHandler,
+  State,
+} from 'react-native-gesture-handler'
+
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
 
 const PRIORITY_CONFIG: Record<PriorityLevel, { label: string; color: string; bg: string }> = {
   low:    { label: 'Low',    color: '#10B981', bg: '#D1FAE5' },
@@ -72,9 +88,9 @@ export default function TicketDetailScreen() {
     return (
       <View style={styles.safeArea}>
         <Header id={id} onBack={() => router.back()} topInset={insets.top} />
-        <View style={styles.centered}>
-          <ActivityIndicator size="large" color="#1A56C4" />
-        </View>
+        <ScrollView style={styles.body} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          <TicketDetailSkeleton />
+        </ScrollView>
       </View>
     )
   }
@@ -98,10 +114,7 @@ export default function TicketDetailScreen() {
 
       <ScrollView
         style={styles.body}
-        contentContainerStyle={[
-          styles.scrollContent,
-          hasActionBar && { paddingBottom: 100 },
-        ]}
+        contentContainerStyle={[styles.scrollContent, hasActionBar && { paddingBottom: 100 }]}
         showsVerticalScrollIndicator={false}
       >
         <TicketInfoCard
@@ -115,65 +128,40 @@ export default function TicketDetailScreen() {
         <AssignedStaffCard ticket={ticket} />
       </ScrollView>
 
-      {/* Action Bar */}
       {hasActionBar && (
         <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12 }]}>
           {canCancel && (
-            <TouchableOpacity
-              style={[styles.actionBtn, { backgroundColor: '#EF4444' }]}
-              onPress={() => setCancelModalVisible(true)}
-              activeOpacity={0.85}
-            >
+            <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#EF4444' }]} onPress={() => setCancelModalVisible(true)} activeOpacity={0.85}>
               <Ionicons name="close-circle-outline" size={18} color="#fff" />
               <Text style={styles.actionBtnText}>Cancel Ticket</Text>
             </TouchableOpacity>
           )}
           {canClaim && (
-            <TouchableOpacity
-              style={[styles.actionBtn, { backgroundColor: '#1A56C4' }]}
-              onPress={() => triggerAction('claim')}
-              activeOpacity={0.85}
-            >
+            <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#1A56C4' }]} onPress={() => triggerAction('claim')} activeOpacity={0.85}>
               <Ionicons name="hand-left-outline" size={18} color="#fff" />
               <Text style={styles.actionBtnText}>Claim Ticket</Text>
             </TouchableOpacity>
           )}
           {canResolve && (
-            <TouchableOpacity
-              style={[styles.actionBtn, { backgroundColor: '#10B981' }]}
-              onPress={() => triggerAction('resolve')}
-              activeOpacity={0.85}
-            >
+            <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#10B981' }]} onPress={() => triggerAction('resolve')} activeOpacity={0.85}>
               <Ionicons name="checkmark-circle-outline" size={18} color="#fff" />
               <Text style={styles.actionBtnText}>Resolve Ticket</Text>
             </TouchableOpacity>
           )}
           {canHold && (
-            <TouchableOpacity
-              style={[styles.actionBtn, { backgroundColor: '#F59E0B' }]}
-              onPress={() => triggerAction('hold')}
-              activeOpacity={0.85}
-            >
+            <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#F59E0B' }]} onPress={() => triggerAction('hold')} activeOpacity={0.85}>
               <Ionicons name="pause-circle-outline" size={18} color="#fff" />
               <Text style={styles.actionBtnText}>Hold Ticket</Text>
             </TouchableOpacity>
           )}
           {canAddInfo && (
-            <TouchableOpacity
-              style={[styles.actionBtn, { backgroundColor: '#8B5CF6' }]}
-              onPress={() => triggerAction('addInfo')}
-              activeOpacity={0.85}
-            >
+            <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#8B5CF6' }]} onPress={() => triggerAction('addInfo')} activeOpacity={0.85}>
               <Ionicons name="information-circle-outline" size={18} color="#fff" />
               <Text style={styles.actionBtnText}>Add Information</Text>
             </TouchableOpacity>
           )}
           {canApprove && (
-            <TouchableOpacity
-              style={[styles.actionBtn, { backgroundColor: '#F59E0B' }]}
-              onPress={() => triggerAction('approve')}
-              activeOpacity={0.85}
-            >
+            <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#F59E0B' }]} onPress={() => triggerAction('approve')} activeOpacity={0.85}>
               <Ionicons name="shield-checkmark-outline" size={18} color="#fff" />
               <Text style={styles.actionBtnText}>Approve Ticket</Text>
             </TouchableOpacity>
@@ -181,7 +169,6 @@ export default function TicketDetailScreen() {
         </View>
       )}
 
-      {/* Cancel Modal (User) */}
       <CancelModal
         visible={cancelModalVisible}
         onKeep={() => setCancelModalVisible(false)}
@@ -189,7 +176,6 @@ export default function TicketDetailScreen() {
         isLoading={isCancelling}
       />
 
-      {/* Action Modal (Staff/Admin/User) */}
       {pendingAction && (
         <ActionModal
           visible={actionModalVisible}
@@ -205,16 +191,133 @@ export default function TicketDetailScreen() {
   )
 }
 
+// ─── Authenticated Image ───────────────────────────────────
+
+function AuthenticatedImage({
+  filePath,
+  style,
+  resizeMode = 'cover',
+}: {
+  filePath: string
+  style: any
+  resizeMode?: 'cover' | 'contain' | 'stretch' | 'center'
+}) {
+  const [uri, setUri] = useState<string | null>(null)
+  const token = useAuthStore((s) => s.token)
+
+  useEffect(() => {
+    fetchAuthenticatedImage(filePath, token!, config.API_BASE_URL)
+      .then(setUri)
+      .catch((e) => console.log('Failed to load image:', e))
+  }, [filePath, token])
+
+  if (!uri) return <SkeletonBox style={style} />
+  return <Image source={{ uri }} style={style} resizeMode={resizeMode} />
+}
+
+// ─── Zoomable Slide ────────────────────────────────────────
+
+function ZoomableSlide({
+  filePath,
+  onDismiss,
+  onZoomChange,
+}: {
+  filePath: string
+  onDismiss: () => void
+  onZoomChange: (zoomed: boolean) => void
+}) {
+  const scale = useRef(new Animated.Value(1)).current
+  const savedScale = useRef(1)
+  const translateY = useRef(new Animated.Value(0)).current
+  const overlayOpacity = useRef(new Animated.Value(1)).current
+
+  const pinchRef = useRef(null)
+  const panRef = useRef(null)
+
+  const onPinchEvent = Animated.event(
+    [{ nativeEvent: { scale } }],
+    { useNativeDriver: true }
+  )
+
+  const onPinchStateChange = (event: any) => {
+    if (event.nativeEvent.oldState === State.ACTIVE) {
+      const newScale = savedScale.current * event.nativeEvent.scale
+      if (newScale < 1) {
+        savedScale.current = 1
+        Animated.spring(scale, { toValue: 1, useNativeDriver: true }).start()
+        onZoomChange(false)
+      } else if (newScale > 5) {
+        savedScale.current = 5
+        scale.setValue(5)
+        onZoomChange(true)
+      } else {
+        savedScale.current = newScale
+        scale.setValue(newScale)
+        onZoomChange(newScale > 1.05)
+      }
+    }
+  }
+
+  const onPanEvent = Animated.event(
+    [{ nativeEvent: { translationY: translateY } }],
+    { useNativeDriver: true }
+  )
+
+  const onPanStateChange = (event: any) => {
+    if (event.nativeEvent.oldState === State.ACTIVE) {
+      if (event.nativeEvent.translationY > 120 && savedScale.current <= 1) {
+        Animated.parallel([
+          Animated.timing(translateY, { toValue: SCREEN_HEIGHT, duration: 220, useNativeDriver: true }),
+          Animated.timing(overlayOpacity, { toValue: 0, duration: 220, useNativeDriver: true }),
+        ]).start(onDismiss)
+      } else {
+        Animated.parallel([
+          Animated.spring(translateY, { toValue: 0, useNativeDriver: true }),
+          Animated.spring(overlayOpacity, { toValue: 1, useNativeDriver: true }),
+        ]).start()
+      }
+    }
+  }
+
+  const animatedImageStyle = {
+    transform: [{ translateY }, { scale }],
+  }
+
+  return (
+    <PanGestureHandler
+      ref={panRef}
+      onGestureEvent={onPanEvent}
+      onHandlerStateChange={onPanStateChange}
+      simultaneousHandlers={pinchRef}
+      activeOffsetY={[-10, 10]}
+      failOffsetX={[-20, 20]}
+    >
+      <Animated.View style={[styles.imageViewerSlide, { opacity: overlayOpacity }]}>
+        <PinchGestureHandler
+          ref={pinchRef}
+          onGestureEvent={onPinchEvent}
+          onHandlerStateChange={onPinchStateChange}
+          simultaneousHandlers={panRef}
+        >
+          <Animated.View style={animatedImageStyle}>
+            <AuthenticatedImage
+              filePath={filePath}
+              style={styles.imageViewerFull}
+              resizeMode="contain"
+            />
+          </Animated.View>
+        </PinchGestureHandler>
+      </Animated.View>
+    </PanGestureHandler>
+  )
+}
+
 // ─── Header ───────────────────────────────────────────────
 
 function Header({ id, onBack, topInset }: { id: string; onBack: () => void; topInset: number }) {
   return (
     <View style={[styles.header, { paddingTop: topInset + 8 }]}>
-      <TouchableOpacity
-        style={styles.backBtn}
-        onPress={onBack}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-      >
+      <TouchableOpacity style={styles.backBtn} onPress={onBack} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
         <Ionicons name="chevron-back" size={20} color="#fff" />
       </TouchableOpacity>
       <View>
@@ -240,7 +343,24 @@ function TicketInfoCard({
   attachmentsExpanded: boolean
   onToggleAttachments: () => void
 }) {
+  const insets = useSafeAreaInsets()
   const priority = PRIORITY_CONFIG[ticket.priority]
+  const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null)
+  const [isZoomed, setIsZoomed] = useState(false)   // ← track zoom state untuk disable FlatList scroll
+  const token = useAuthStore((s) => s.token)
+
+  useEffect(() => {
+    if (attachmentsExpanded && ticket.attachments.length > 0) {
+      ticket.attachments.forEach((att) => {
+        fetchAuthenticatedImage(att.filePath, token!, config.API_BASE_URL).catch(() => {})
+      })
+    }
+  }, [attachmentsExpanded])
+
+  // Reset zoom state saat ganti slide
+  const handleZoomChange = (zoomed: boolean) => {
+    setIsZoomed(zoomed)
+  }
 
   return (
     <View style={styles.card}>
@@ -257,9 +377,7 @@ function TicketInfoCard({
 
       <View style={styles.badgeRow}>
         <View style={[styles.priorityBadge, { backgroundColor: priority.bg }]}>
-          <Text style={[styles.priorityText, { color: priority.color }]}>
-            {priority.label} Priority
-          </Text>
+          <Text style={[styles.priorityText, { color: priority.color }]}>{priority.label} Priority</Text>
         </View>
         <View style={styles.issueTypeBadge}>
           <Text style={styles.issueTypeText}>{ticket.issueType.name}</Text>
@@ -300,17 +418,89 @@ function TicketInfoCard({
       {attachmentsExpanded && (
         <View style={styles.accordionContent}>
           {ticket.attachments.length > 0 ? (
-            ticket.attachments.map((att) => (
-              <View key={att.id} style={styles.attachmentItem}>
-                <Ionicons name="document-attach-outline" size={14} color="#6B7280" />
-                <Text style={styles.accordionText}>{att.fileName}</Text>
-              </View>
-            ))
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {ticket.attachments.map((att, index) => (
+                <TouchableOpacity key={att.id} onPress={() => { setSelectedImageIndex(index); setIsZoomed(false) }} activeOpacity={0.85}>
+                  <AuthenticatedImage filePath={att.filePath} style={styles.attachmentPreview} />
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
           ) : (
             <Text style={styles.accordionText}>Tidak ada lampiran.</Text>
           )}
         </View>
       )}
+
+      {/* Image Viewer Modal */}
+      <Modal
+        visible={selectedImageIndex !== null}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => { setSelectedImageIndex(null); setIsZoomed(false) }}
+      >
+        <View style={styles.imageViewerOverlay}>
+          {/* Close button */}
+          <TouchableOpacity
+            style={[styles.imageViewerClose, { top: insets.top + 16 }]}
+            onPress={() => { setSelectedImageIndex(null); setIsZoomed(false) }}
+            hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
+          >
+            <Ionicons name="close" size={22} color="#fff" />
+          </TouchableOpacity>
+
+          {/* Counter */}
+          {ticket.attachments.length > 1 && selectedImageIndex !== null && (
+            <View style={[styles.imageViewerCounter, { top: insets.top + 20 }]}>
+              <Text style={styles.imageViewerCounterText}>
+                {selectedImageIndex + 1} / {ticket.attachments.length}
+              </Text>
+            </View>
+          )}
+
+          {/* FlatList — scroll disabled saat zoomed */}
+          {selectedImageIndex !== null && (
+            <FlatList
+              data={ticket.attachments}
+              horizontal
+              pagingEnabled
+              scrollEnabled={!isZoomed}          // ← kunci: matikan scroll saat zoomed
+              showsHorizontalScrollIndicator={false}
+              initialScrollIndex={selectedImageIndex}
+              getItemLayout={(_, index) => ({
+                length: SCREEN_WIDTH,
+                offset: SCREEN_WIDTH * index,
+                index,
+              })}
+              onMomentumScrollEnd={(e) => {
+                const newIndex = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH)
+                setSelectedImageIndex(newIndex)
+                setIsZoomed(false)              // ← reset zoom saat pindah slide
+              }}
+              keyExtractor={(item) => String(item.id)}
+              renderItem={({ item }) => (
+                <ZoomableSlide
+                  filePath={item.filePath}
+                  onDismiss={() => { setSelectedImageIndex(null); setIsZoomed(false) }}
+                  onZoomChange={handleZoomChange}
+                />
+              )}
+            />
+          )}
+
+          {/* Dot indicators */}
+          {ticket.attachments.length > 1 && selectedImageIndex !== null && (
+            <View style={styles.imageViewerDots}>
+              {ticket.attachments.map((_, i) => (
+                <View
+                  key={i}
+                  style={[styles.imageViewerDot, i === selectedImageIndex && styles.imageViewerDotActive]}
+                />
+              ))}
+            </View>
+          )}
+        </View>
+      </Modal>
     </View>
   )
 }
@@ -329,22 +519,11 @@ function StatusTimelineCard({ ticket }: { ticket: TicketDetail }) {
           <Text style={styles.sectionSubtitle}>Status Last Updated on : {ticket.statusLastUpdated}</Text>
         </View>
       </View>
-
       <View style={styles.timelineContainer}>
         {ticket.timeline.map((step, index) => (
           <TimelineItem key={step.id} step={step} isLast={index === ticket.timeline.length - 1} />
         ))}
       </View>
-
-      {/* <View style={styles.notesRow}>
-        <Ionicons name="clipboard-outline" size={16} color="#6B7280" />
-        <View style={{ flex: 1 }}>
-          <Text style={styles.notesLabel}>Additional Notes :</Text>
-          <Text style={styles.notesText}>
-            {ticket.additionalNotes ?? 'No additional notes were provided by staff.'}
-          </Text>
-        </View>
-      </View> */}
     </View>
   )
 }
@@ -357,23 +536,14 @@ function TimelineItem({ step, isLast }: { step: TimelineStep; isLast: boolean })
   return (
     <View style={styles.timelineItem}>
       <View style={styles.timelineDotCol}>
-        <View style={[
-          styles.timelineDot,
-          isCompleted && styles.timelineDotCompleted,
-          isActive && styles.timelineDotActive,
-          isInactive && styles.timelineDotInactive,
-        ]}>
+        <View style={[styles.timelineDot, isCompleted && styles.timelineDotCompleted, isActive && styles.timelineDotActive, isInactive && styles.timelineDotInactive]}>
           {isCompleted && <Ionicons name="checkmark" size={13} color="#fff" />}
           {isActive && <View style={styles.timelineDotInner} />}
         </View>
-        {!isLast && (
-          <View style={[styles.timelineLine, (isCompleted || isActive) && styles.timelineLineActive]} />
-        )}
+        {!isLast && <View style={[styles.timelineLine, (isCompleted || isActive) && styles.timelineLineActive]} />}
       </View>
       <View style={styles.timelineContent}>
-        <Text style={[styles.timelineLabel, isInactive && styles.timelineLabelInactive]}>
-          {step.label}
-        </Text>
+        <Text style={[styles.timelineLabel, isInactive && styles.timelineLabelInactive]}>{step.label}</Text>
         {step.description && <Text style={styles.timelineDescription}>{step.description}</Text>}
         {step.changedBy && <Text style={styles.timelineChangedBy}>oleh {step.changedBy}</Text>}
         {step.timestamp && <Text style={styles.timelineTimestamp}>{step.timestamp}</Text>}
@@ -398,15 +568,10 @@ function AssignedStaffCard({ ticket }: { ticket: TicketDetail }) {
           )}
         </View>
         <View>
-          <Text style={styles.staffName}>
-            {hasStaff ? ticket.assignedStaff!.name : 'No Assigned Staff Yet'}
-          </Text>
-          <Text style={styles.staffRole}>
-            {hasStaff ? ticket.assignedStaff!.role ?? '' : 'No Information Yet'}
-          </Text>
+          <Text style={styles.staffName}>{hasStaff ? ticket.assignedStaff!.name : 'No Assigned Staff Yet'}</Text>
+          <Text style={styles.staffRole}>{hasStaff ? ticket.assignedStaff!.role ?? '' : 'No Information Yet'}</Text>
         </View>
       </View>
-
       <View style={styles.staffNotesHeader}>
         <View style={styles.staffNotesLabelRow}>
           <Ionicons name="chatbubble-ellipses-outline" size={15} color="#374151" />
@@ -414,11 +579,8 @@ function AssignedStaffCard({ ticket }: { ticket: TicketDetail }) {
         </View>
         <Text style={styles.staffNotesTime}>{ticket.staffNotesTime ?? 'No Time Information'}</Text>
       </View>
-
       <View style={styles.staffNotesBox}>
-        <Text style={styles.staffNotesText}>
-          {ticket.staffNotes ?? 'No notes provided yet by staff.'}
-        </Text>
+        <Text style={styles.staffNotesText}>{ticket.staffNotes ?? 'No notes provided yet by staff.'}</Text>
       </View>
     </View>
   )
@@ -426,9 +588,7 @@ function AssignedStaffCard({ ticket }: { ticket: TicketDetail }) {
 
 // ─── Cancel Modal ──────────────────────────────────────────
 
-function CancelModal({
-  visible, onKeep, onCancel, isLoading,
-}: {
+function CancelModal({ visible, onKeep, onCancel, isLoading }: {
   visible: boolean; onKeep: () => void; onCancel: () => void; isLoading: boolean
 }) {
   return (
@@ -444,15 +604,8 @@ function CancelModal({
             <TouchableOpacity style={styles.modalSecondaryBtn} onPress={onKeep} disabled={isLoading}>
               <Text style={styles.modalSecondaryText}>Keep Ticket</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.modalPrimaryBtn, { backgroundColor: '#EF4444' }]}
-              onPress={onCancel}
-              disabled={isLoading}
-            >
-              {isLoading
-                ? <ActivityIndicator color="#fff" size="small" />
-                : <Text style={styles.modalPrimaryText}>Cancel Ticket</Text>
-              }
+            <TouchableOpacity style={[styles.modalPrimaryBtn, { backgroundColor: '#EF4444' }]} onPress={onCancel} disabled={isLoading}>
+              {isLoading ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.modalPrimaryText}>Cancel Ticket</Text>}
             </TouchableOpacity>
           </View>
         </View>
@@ -463,9 +616,7 @@ function CancelModal({
 
 // ─── Action Modal ─────────────────────────────────────────
 
-function ActionModal({
-  visible, action, comment, onChangeComment, onCancel, onConfirm, isLoading,
-}: {
+function ActionModal({ visible, action, comment, onChangeComment, onCancel, onConfirm, isLoading }: {
   visible: boolean
   action: 'claim' | 'resolve' | 'approve' | 'hold' | 'addInfo'
   comment: string
@@ -495,7 +646,6 @@ function ActionModal({
           </View>
           <Text style={styles.modalTitle}>{cfg.label}?</Text>
           <Text style={styles.modalSubtitle}>{SUBTITLE[action]}</Text>
-
           <TextInput
             style={styles.commentInput}
             placeholder={requiresComment ? 'Catatan wajib diisi' : 'Tambah catatan (opsional)'}
@@ -507,7 +657,6 @@ function ActionModal({
             textAlignVertical="top"
             maxLength={300}
           />
-
           <View style={styles.modalButtons}>
             <TouchableOpacity style={styles.modalSecondaryBtn} onPress={onCancel} disabled={isLoading}>
               <Text style={styles.modalSecondaryText}>Batal</Text>
@@ -517,10 +666,7 @@ function ActionModal({
               onPress={onConfirm}
               disabled={isLoading || !canSubmit}
             >
-              {isLoading
-                ? <ActivityIndicator color="#fff" size="small" />
-                : <Text style={styles.modalPrimaryText}>Konfirmasi</Text>
-              }
+              {isLoading ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.modalPrimaryText}>Konfirmasi</Text>}
             </TouchableOpacity>
           </View>
         </View>
@@ -533,43 +679,24 @@ function ActionModal({
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#F3F4F6' },
-  centered: {
-    flex: 1, justifyContent: 'center', alignItems: 'center',
-    backgroundColor: '#F3F4F6', gap: 8,
-  },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F3F4F6', gap: 8 },
   errorText: { fontSize: 15, color: '#6B7280', fontWeight: '500' },
 
   header: {
-    backgroundColor: '#1A56C4',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'android' ? 12 : 8,
-    paddingBottom: 20,
-    gap: 14,
+    backgroundColor: '#1A56C4', flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 20, paddingTop: Platform.OS === 'android' ? 12 : 8, paddingBottom: 20, gap: 14,
   },
-  backBtn: {
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    alignItems: 'center', justifyContent: 'center',
-  },
+  backBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
   headerTitle: { color: '#fff', fontSize: 20, fontWeight: '700', letterSpacing: 0.2 },
   headerSubtitle: { color: 'rgba(255,255,255,0.7)', fontSize: 13, marginTop: 1 },
 
   body: { flex: 1, backgroundColor: '#F3F4F6' },
   scrollContent: { padding: 16, gap: 12 },
 
-  card: {
-    backgroundColor: '#fff', borderRadius: 14, padding: 16,
-    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 }, elevation: 2,
-  },
+  card: { backgroundColor: '#fff', borderRadius: 14, padding: 16, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
 
   titleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 10 },
-  iconCircle: {
-    width: 38, height: 38, borderRadius: 19,
-    backgroundColor: '#EFF6FF', alignItems: 'center', justifyContent: 'center',
-  },
+  iconCircle: { width: 38, height: 38, borderRadius: 19, backgroundColor: '#EFF6FF', alignItems: 'center', justifyContent: 'center' },
   titleMeta: { flex: 1 },
   ticketTitle: { fontSize: 15, fontWeight: '700', color: '#111827', marginBottom: 2 },
   reportedAt: { fontSize: 12, color: '#6B7280' },
@@ -582,31 +709,32 @@ const styles = StyleSheet.create({
   locationItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   locationText: { fontSize: 12, color: '#374151', fontWeight: '500' },
   divider: { height: 1, backgroundColor: '#F3F4F6', marginVertical: 4 },
-  accordionRow: {
-    flexDirection: 'row', justifyContent: 'space-between',
-    alignItems: 'center', paddingVertical: 10,
-  },
+  accordionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 10 },
   accordionLabel: { fontSize: 14, fontWeight: '600', color: '#111827' },
   accordionContent: { paddingBottom: 8 },
   accordionText: { fontSize: 13, color: '#6B7280', lineHeight: 20 },
   attachmentItem: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
+  attachmentPreview: { width: 100, height: 100, borderRadius: 10, marginRight: 8 },
+
+  imageViewerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.92)', justifyContent: 'center', alignItems: 'center' },
+  imageViewerClose: { position: 'absolute', right: 20, zIndex: 10, width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
+  imageViewerCounter: { position: 'absolute', left: 0, right: 0, alignItems: 'center', zIndex: 10 },
+  imageViewerCounterText: { color: '#fff', fontSize: 14, fontWeight: '600', backgroundColor: 'rgba(0,0,0,0.4)', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20 },
+  imageViewerSlide: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT, justifyContent: 'center', alignItems: 'center' },
+  imageViewerFull: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT },
+  imageViewerDots: { position: 'absolute', bottom: 40, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', gap: 6 },
+  imageViewerDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.4)' },
+  imageViewerDotActive: { backgroundColor: '#fff', width: 18 },
 
   sectionHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16 },
-  sectionIconCircle: {
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center',
-  },
+  sectionIconCircle: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center' },
   sectionTitle: { fontSize: 15, fontWeight: '700', color: '#111827' },
   sectionSubtitle: { fontSize: 11, color: '#9CA3AF', marginTop: 1 },
 
   timelineContainer: { paddingLeft: 4, marginBottom: 16 },
   timelineItem: { flexDirection: 'row', gap: 12 },
   timelineDotCol: { alignItems: 'center', width: 24 },
-  timelineDot: {
-    width: 24, height: 24, borderRadius: 12,
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 2, borderColor: '#D1D5DB', backgroundColor: '#fff',
-  },
+  timelineDot: { width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#D1D5DB', backgroundColor: '#fff' },
   timelineDotCompleted: { backgroundColor: '#1A56C4', borderColor: '#1A56C4' },
   timelineDotActive: { backgroundColor: '#1A56C4', borderColor: '#1A56C4' },
   timelineDotInactive: { backgroundColor: '#fff', borderColor: '#D1D5DB' },
@@ -625,83 +753,30 @@ const styles = StyleSheet.create({
   notesText: { fontSize: 12, color: '#6B7280', lineHeight: 18 },
 
   staffRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
-  staffAvatar: {
-    width: 44, height: 44, borderRadius: 22,
-    backgroundColor: '#E5E7EB', alignItems: 'center', justifyContent: 'center',
-  },
+  staffAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#E5E7EB', alignItems: 'center', justifyContent: 'center' },
   staffAvatarText: { fontSize: 18, fontWeight: '700', color: '#374151' },
   staffName: { fontSize: 15, fontWeight: '700', color: '#111827' },
   staffRole: { fontSize: 12, color: '#9CA3AF', marginTop: 1 },
-  staffNotesHeader: {
-    flexDirection: 'row', justifyContent: 'space-between',
-    alignItems: 'center', marginBottom: 8,
-  },
+  staffNotesHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   staffNotesLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   staffNotesLabel: { fontSize: 13, fontWeight: '600', color: '#111827' },
   staffNotesTime: { fontSize: 11, color: '#9CA3AF' },
   staffNotesBox: { backgroundColor: '#F9FAFB', borderRadius: 10, padding: 12 },
   staffNotesText: { fontSize: 13, color: '#6B7280', lineHeight: 20 },
 
-  bottomBar: {
-    backgroundColor: '#fff',
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: -3 },
-    elevation: 8,
-    gap: 8,
-  },
-  actionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    borderRadius: 28,
-    paddingVertical: 14,
-  },
+  bottomBar: { backgroundColor: '#fff', paddingHorizontal: 20, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#E5E7EB', shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 8, shadowOffset: { width: 0, height: -3 }, elevation: 8, gap: 8 },
+  actionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 28, paddingVertical: 14 },
   actionBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
 
-  modalOverlay: {
-    flex: 1, backgroundColor: 'rgba(0,0,0,0.45)',
-    justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32,
-  },
-  modalCard: {
-    backgroundColor: '#fff', borderRadius: 20,
-    padding: 28, alignItems: 'center', width: '100%',
-  },
-  modalIconCircle: {
-    width: 56, height: 56, borderRadius: 28,
-    alignItems: 'center', justifyContent: 'center', marginBottom: 16,
-  },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 },
+  modalCard: { backgroundColor: '#fff', borderRadius: 20, padding: 28, alignItems: 'center', width: '100%' },
+  modalIconCircle: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
   modalTitle: { fontSize: 18, fontWeight: '700', color: '#111827', marginBottom: 8 },
-  modalSubtitle: {
-    fontSize: 13, color: '#6B7280', textAlign: 'center', marginBottom: 16, lineHeight: 20,
-  },
-  commentInput: {
-    width: '100%',
-    backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    fontSize: 13,
-    color: '#111827',
-    minHeight: 80,
-    marginBottom: 20,
-  },
+  modalSubtitle: { fontSize: 13, color: '#6B7280', textAlign: 'center', marginBottom: 16, lineHeight: 20 },
+  commentInput: { width: '100%', backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, fontSize: 13, color: '#111827', minHeight: 80, marginBottom: 20 },
   modalButtons: { flexDirection: 'row', gap: 12, width: '100%' },
-  modalSecondaryBtn: {
-    flex: 1, borderWidth: 1.5, borderColor: '#D1D5DB',
-    borderRadius: 10, paddingVertical: 13, alignItems: 'center',
-  },
+  modalSecondaryBtn: { flex: 1, borderWidth: 1.5, borderColor: '#D1D5DB', borderRadius: 10, paddingVertical: 13, alignItems: 'center' },
   modalSecondaryText: { fontSize: 14, fontWeight: '600', color: '#374151' },
-  modalPrimaryBtn: {
-    flex: 1, borderRadius: 10, paddingVertical: 13, alignItems: 'center',
-  },
+  modalPrimaryBtn: { flex: 1, borderRadius: 10, paddingVertical: 13, alignItems: 'center' },
   modalPrimaryText: { fontSize: 14, fontWeight: '600', color: '#fff' },
 })

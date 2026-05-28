@@ -8,7 +8,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   StatusBar,
-  ActivityIndicator,
 } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -17,6 +16,7 @@ import { SearchBar } from '@/components/ui/SearchBar'
 import { TicketCard } from '@/features/dashboard/components/TicketCard'
 import { FilterChips } from '@/features/dashboard/components/FilterChips'
 import { StatusBadge } from '@/components/ui/StatusBadge'
+import { DashboardSkeleton } from '@/components/ui/Skeleton'
 import { useDashboard } from '@/features/dashboard/hooks/useDashboard'
 import { useAuthStore } from '@/store/auth.store'
 
@@ -78,11 +78,7 @@ export default function DashboardScreen() {
 
       {/* Body */}
       <View style={styles.body}>
-        {isLoading ? (
-          <View style={styles.centered}>
-            <ActivityIndicator size="large" color="#1A56C4" />
-          </View>
-        ) : isError ? (
+        {isError ? (
           <View style={styles.centered}>
             <Ionicons name="warning-outline" size={40} color="#9CA3AF" />
             <Text style={styles.errorText}>Gagal memuat tiket</Text>
@@ -90,6 +86,22 @@ export default function DashboardScreen() {
               <Text style={styles.retryText}>Coba lagi</Text>
             </TouchableOpacity>
           </View>
+        ) : isLoading ? (
+          <>
+            <SearchBar
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholder="Search ticket by ID or problem..."
+            />
+            <FilterChips activeFilter={activeFilter} onFilterChange={setActiveFilter} />
+            <FlatList
+              data={[]}
+              renderItem={null}
+              ListHeaderComponent={<DashboardSkeleton isStaff={isStaff} />}
+              contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 100 }]}
+              showsVerticalScrollIndicator={false}
+            />
+          </>
         ) : (
           <>
             <SearchBar
@@ -153,7 +165,6 @@ function StaffHeader({
 }) {
   return (
     <>
-      {/* Stats */}
       {stats && (
         <View style={styles.statsCard}>
           <StatItem icon="ticket-outline" value={stats.assigned} label="Assigned" color="#1A56C4" />
@@ -163,8 +174,6 @@ function StaffHeader({
           <StatItem icon="checkmark-circle-outline" value={stats.completed} label="Completed" color="#10B981" />
         </View>
       )}
-
-      {/* Active / Assigned tickets horizontal scroll */}
       {assignedTickets.length > 0 && (
         <AssignedTicketsRow tickets={assignedTickets} onPress={onTicketPress} />
       )}
@@ -173,10 +182,7 @@ function StaffHeader({
 }
 
 function StatItem({
-  icon,
-  value,
-  label,
-  color,
+  icon, value, label, color,
 }: {
   icon: keyof typeof Ionicons.glyphMap
   value: number
@@ -195,8 +201,7 @@ function StatItem({
 // ─── Assigned Tickets Horizontal Row ──────────────────────
 
 function AssignedTicketsRow({
-  tickets,
-  onPress,
+  tickets, onPress,
 }: {
   tickets: any[]
   onPress: (ticket: any) => void
@@ -212,7 +217,6 @@ function AssignedTicketsRow({
           {tickets.length} ticket{tickets.length > 1 ? 's' : ''}
         </Text>
       </View>
-
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -227,8 +231,7 @@ function AssignedTicketsRow({
 }
 
 function AssignedTicketCard({
-  ticket,
-  onPress,
+  ticket, onPress,
 }: {
   ticket: any
   onPress: (ticket: any) => void
@@ -319,7 +322,6 @@ const styles = StyleSheet.create({
 
   listContent: { paddingHorizontal: 16, paddingTop: 8 },
 
-  // Stats card
   statsCard: {
     backgroundColor: '#fff',
     borderRadius: 14,
@@ -337,7 +339,6 @@ const styles = StyleSheet.create({
   statValue: { fontSize: 22, fontWeight: '700', marginBottom: 2 },
   statLabel: { fontSize: 11, color: '#9CA3AF', fontWeight: '500' },
 
-  // Assigned section
   assignedSection: { marginBottom: 20, marginHorizontal: -16 },
   assignedHeader: {
     flexDirection: 'row', justifyContent: 'space-between',
@@ -360,7 +361,6 @@ const styles = StyleSheet.create({
   assignedCardMeta: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   assignedCardMetaText: { fontSize: 11, color: '#6B7280', flex: 1 },
 
-  // Empty / Footer
   emptyState: {
     alignItems: 'center', justifyContent: 'center',
     paddingTop: 60, paddingHorizontal: 32, gap: 8,
