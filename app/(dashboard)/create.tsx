@@ -20,10 +20,18 @@ import * as ImagePicker from 'expo-image-picker'
 import { useCreateTicket } from '@/features/dashboard/hooks/useCreateTicket'
 import { IssueTypeWithScope, Place } from '@/features/dashboard/types'
 import { Ionicons } from '@expo/vector-icons'
-import { MOCK_ISSUE_TYPES, MOCK_PLACES, MOCK_PLACES_BY_BUILDING } from '@/mocks/createTicket.mock'
+import {
+  MOCK_CATEGORIES,
+  MOCK_ISSUE_TYPES_BY_CATEGORY,
+  MOCK_PLACES,
+  MOCK_PLACES_BY_BUILDING,
+} from '@/mocks/createTicket.mock'
+import { TicketCategory } from '@/features/dashboard/types'
+import { LocationPickerSheet } from '@/features/dashboard/components/LocationPickerSheet'
 
 export default function CreateTicketScreen() {
   const router = useRouter()
+  const STEP_TITLES = ['SELECT CATEGORY', 'SELECT TYPE', 'DESCRIBE YOUR PROBLEM']
   const {
     currentStep,
     totalSteps,
@@ -32,6 +40,7 @@ export default function CreateTicketScreen() {
     goNext,
     goPrev,
     selectIssueType,
+    selectCategory,
     setPlaceId,
     setShortDescription,
     setDescription,
@@ -78,34 +87,42 @@ export default function CreateTicketScreen() {
           ))}
         </View>
         <Text style={styles.stepTitle}>
-          {currentStep === 1 ? 'SELECT CATEGORY' : 'DESCRIBE YOUR PROBLEM'}
+          {STEP_TITLES[currentStep - 1]}
         </Text>
       </View>
 
       {/* Step Content */}
       <View style={styles.body}>
-        {currentStep === 1 && (
-          <Step1IssueType
-            issueTypes={MOCK_ISSUE_TYPES}
-            selected={form.selectedIssueType}
-            onSelect={selectIssueType}
-          />
-        )}
-        {currentStep === 2 && (
-          <Step2Details
-            places={MOCK_PLACES}
-            placesByBuilding={MOCK_PLACES_BY_BUILDING}
-            selectedPlaceId={form.placeId}
-            onSelectPlace={setPlaceId}
-            shortDescription={form.shortDescription}
-            onChangeShortDescription={setShortDescription}
-            description={form.description}
-            onChangeDescription={setDescription}
-            attachmentUris={form.attachmentUris}
-            onAddAttachment={addAttachment}
-            onRemoveAttachment={removeAttachment}
-          />
-        )}
+{currentStep === 1 && (
+  <Step1Category
+    categories={MOCK_CATEGORIES}
+    selectedCategory={form.selectedCategory}
+    onSelectCategory={selectCategory}
+  />
+)}
+{currentStep === 2 && (
+  <Step2IssueType
+    issueTypes={MOCK_ISSUE_TYPES_BY_CATEGORY[form.selectedCategory?.name ?? ''] ?? []}
+    selectedIssueType={form.selectedIssueType}
+    onSelectIssueType={selectIssueType}
+  />
+)}
+{currentStep === 3 && (
+  <Step3Details
+    // props sama seperti Step2Details sebelumnya
+    places={MOCK_PLACES}
+    placesByBuilding={MOCK_PLACES_BY_BUILDING}
+    selectedPlaceId={form.placeId}
+    onSelectPlace={setPlaceId}
+    shortDescription={form.shortDescription}
+    onChangeShortDescription={setShortDescription}
+    description={form.description}
+    onChangeDescription={setDescription}
+    attachmentUris={form.attachmentUris}
+    onAddAttachment={addAttachment}
+    onRemoveAttachment={removeAttachment}
+  />
+)}
       </View>
 
       {/* Bottom Buttons */}
@@ -149,29 +166,69 @@ export default function CreateTicketScreen() {
   )
 }
 
-// ─── Step 1: Select Issue Type ─────────────────────────────
-
-function Step1IssueType({
-  issueTypes,
-  selected,
-  onSelect,
+// Step1 — hanya kategori
+function Step1Category({
+  categories,
+  selectedCategory,
+  onSelectCategory,
 }: {
-  issueTypes: IssueTypeWithScope[]
-  selected: IssueTypeWithScope | null
-  onSelect: (type: IssueTypeWithScope) => void
+  categories: TicketCategory[]
+  selectedCategory: TicketCategory | null
+  onSelectCategory: (cat: TicketCategory) => void
 }) {
   return (
-    <ScrollView
-      contentContainerStyle={styles.stepContent}
-      showsVerticalScrollIndicator={false}
-    >
+    <ScrollView contentContainerStyle={styles.stepContent} showsVerticalScrollIndicator={false}>
+      <Text style={styles.sectionLabel}>Ticket Category</Text>
+      {categories.map((cat) => {
+        const isSelected = selectedCategory?.id === cat.id
+        return (
+          <TouchableOpacity
+            key={cat.id}
+            style={[styles.issueTypeCard, isSelected && styles.issueTypeCardSelected]}
+            onPress={() => onSelectCategory(cat)}
+            activeOpacity={0.85}
+          >
+            <View style={[styles.issueTypeIcon, isSelected && styles.issueTypeIconSelected]}>
+              <Ionicons name={cat.icon as any} size={22} color={isSelected ? '#1A56C4' : '#6B7280'} />
+            </View>
+            <View style={styles.issueTypeInfo}>
+              <Text style={[styles.issueTypeName, isSelected && styles.issueTypeNameSelected]}>
+                {cat.name}
+              </Text>
+              <Text style={[styles.issueTypeDesc, isSelected && styles.issueTypeDescSelected]}>
+                {cat.description}
+              </Text>
+            </View>
+            <View style={[styles.radioOuter, isSelected && styles.radioOuterSelected]}>
+              {isSelected && <View style={styles.radioInner} />}
+            </View>
+          </TouchableOpacity>
+        )
+      })}
+    </ScrollView>
+  )
+}
+
+// Step2 — hanya issue type berdasarkan kategori terpilih
+function Step2IssueType({
+  issueTypes,
+  selectedIssueType,
+  onSelectIssueType,
+}: {
+  issueTypes: IssueTypeWithScope[]
+  selectedIssueType: IssueTypeWithScope | null
+  onSelectIssueType: (type: IssueTypeWithScope) => void
+}) {
+  return (
+    <ScrollView contentContainerStyle={styles.stepContent} showsVerticalScrollIndicator={false}>
+      <Text style={styles.sectionLabel}>Issue Type</Text>
       {issueTypes.map((item) => {
-        const isSelected = selected?.id === item.id
+        const isSelected = selectedIssueType?.id === item.id
         return (
           <TouchableOpacity
             key={item.id}
             style={[styles.issueTypeCard, isSelected && styles.issueTypeCardSelected]}
-            onPress={() => onSelect(item)}
+            onPress={() => onSelectIssueType(item)}
             activeOpacity={0.85}
           >
             <View style={[styles.issueTypeIcon, isSelected && styles.issueTypeIconSelected]}>
@@ -195,9 +252,11 @@ function Step1IssueType({
   )
 }
 
-// ─── Step 2: Details ───────────────────────────────────────
+// Step3Details — isi persis sama dengan Step2Details yang lama, tinggal rename
 
-function Step2Details({
+// ─── Step 3: Details ───────────────────────────────────────
+
+function Step3Details({
   places,
   placesByBuilding,
   selectedPlaceId,
@@ -225,6 +284,7 @@ function Step2Details({
   const [placeDropdownOpen, setPlaceDropdownOpen] = useState(false)
   const selectedPlace = places.find((p) => p.id === selectedPlaceId)
 
+  
   const MAX_ATTACHMENTS = 5
 
   const requestPermission = async (type: 'camera' | 'library') => {
@@ -302,54 +362,13 @@ function Step2Details({
       keyboardShouldPersistTaps="handled"
     >
       {/* Location */}
-      <Text style={styles.fieldLabel}>Location</Text>
-      <TouchableOpacity
-        style={styles.dropdown}
-        onPress={() => setPlaceDropdownOpen(!placeDropdownOpen)}
-        activeOpacity={0.85}
-      >
-        <Text style={[styles.dropdownText, !selectedPlace && styles.dropdownPlaceholder]}>
-          {selectedPlace
-            ? `${selectedPlace.building} — ${selectedPlace.name}`
-            : 'Select Building'}
-        </Text>
-        <Text style={styles.dropdownChevron}>{placeDropdownOpen ? '∧' : '∨'}</Text>
-      </TouchableOpacity>
-
-      {placeDropdownOpen && (
-        <View style={styles.dropdownList}>
-          {Object.entries(placesByBuilding).map(([building, buildingPlaces]) => (
-            <View key={building}>
-              <Text style={styles.dropdownGroupLabel}>{building}</Text>
-              {buildingPlaces.map((place) => (
-                <TouchableOpacity
-                  key={place.id}
-                  style={[
-                    styles.dropdownItem,
-                    selectedPlaceId === place.id && styles.dropdownItemSelected,
-                  ]}
-                  onPress={() => {
-                    onSelectPlace(place.id)
-                    setPlaceDropdownOpen(false)
-                  }}
-                >
-                  <Text
-                    style={[
-                      styles.dropdownItemText,
-                      selectedPlaceId === place.id && styles.dropdownItemTextSelected,
-                    ]}
-                  >
-                    {place.name}
-                  </Text>
-                  {selectedPlaceId === place.id && (
-                    <Text style={styles.dropdownItemCheck}>✓</Text>
-                  )}
-                </TouchableOpacity>
-              ))}
-            </View>
-          ))}
-        </View>
-      )}
+<Text style={styles.fieldLabel}>Location</Text>
+<LocationPickerSheet
+  places={places}
+  placesByBuilding={placesByBuilding}
+  selectedPlaceId={selectedPlaceId}
+  onSelectPlace={onSelectPlace}
+/>
 
       {/* Additional Details */}
       <Text style={[styles.fieldLabel, { marginTop: 16 }]}>Additional Details</Text>
@@ -385,44 +404,51 @@ function Step2Details({
           ({attachmentUris.length}/{MAX_ATTACHMENTS})
         </Text>
       </Text>
-
-      {/* Thumbnail preview */}
-      {attachmentUris.length > 0 && (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.attachmentRow}
-        >
-          {attachmentUris.map((uri) => (
-            <View key={uri} style={styles.attachmentThumb}>
-              <Image source={{ uri }} style={styles.attachmentImage} />
-              <TouchableOpacity
-                style={styles.attachmentRemove}
-                onPress={() => onRemoveAttachment(uri)}
-                hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
-              >
-                <Text style={styles.attachmentRemoveText}>✕</Text>
-              </TouchableOpacity>
-            </View>
-          ))}
-        </ScrollView>
-      )}
-
-      {/* Upload box — sembunyikan kalau sudah penuh */}
-      {attachmentUris.length < MAX_ATTACHMENTS && (
+      {attachmentUris.length > 0 ? (
+  <ScrollView
+    horizontal
+    showsHorizontalScrollIndicator={false}
+    style={styles.attachmentRow}
+    contentContainerStyle={{ alignItems: 'center' }}
+  >
+    {attachmentUris.map((uri) => (
+      <View key={uri} style={styles.attachmentThumb}>
+        <Image source={{ uri }} style={styles.attachmentImage} />
         <TouchableOpacity
-          style={styles.uploadBox}
-          onPress={handleUploadPress}
-          activeOpacity={0.8}
+          style={styles.attachmentRemove}
+          onPress={() => onRemoveAttachment(uri)}
+          hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
         >
-          <Text style={styles.uploadIcon}>🖼</Text>
-          <Text style={styles.uploadTitle}>Upload or take photos</Text>
-          <Text style={styles.uploadSubtitle}>
-            Supported formats: JPG, PNG, JPEG. Max 10 MB
-          </Text>
+          <Text style={styles.attachmentRemoveText}>✕</Text>
         </TouchableOpacity>
-      )}
+      </View>
+    ))}
 
+    {/* Plus button — hanya muncul kalau belum penuh */}
+    {attachmentUris.length < MAX_ATTACHMENTS && (
+      <TouchableOpacity
+        style={styles.attachmentAddBtn}
+        onPress={handleUploadPress}
+        activeOpacity={0.7}
+      >
+        <Ionicons name="add" size={24} color="#1A56C4" />
+      </TouchableOpacity>
+    )}
+  </ScrollView>
+) : (
+  /* Upload box — hanya muncul kalau belum ada gambar sama sekali */
+  <TouchableOpacity
+    style={styles.uploadBox}
+    onPress={handleUploadPress}
+    activeOpacity={0.8}
+  >
+    <Text style={styles.uploadIcon}>🖼</Text>
+    <Text style={styles.uploadTitle}>Upload or take photos</Text>
+    <Text style={styles.uploadSubtitle}>
+      Supported formats: JPG, PNG, JPEG. Max 10 MB
+    </Text>
+  </TouchableOpacity>
+)}
       <View style={{ height: 20 }} />
     </ScrollView>
   )
@@ -684,4 +710,24 @@ const styles = StyleSheet.create({
     borderRadius: 10, paddingVertical: 13, alignItems: 'center',
   },
   modalConfirmText: { fontSize: 14, fontWeight: '600', color: '#fff' },
+  sectionLabel: {
+  fontSize: 12,
+  fontWeight: '700',
+  color: '#9CA3AF',
+  textTransform: 'uppercase',
+  letterSpacing: 0.5,
+  marginBottom: 10,
+},
+attachmentAddBtn: {
+  width: 80,
+  height: 80,
+  borderRadius: 10,
+  borderWidth: 1.5,
+  borderColor: '#1A56C4',
+  borderStyle: 'dashed',
+  alignItems: 'center',
+  justifyContent: 'center',
+  backgroundColor: '#EFF6FF',
+},
 })
+

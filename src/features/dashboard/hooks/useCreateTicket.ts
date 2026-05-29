@@ -3,9 +3,12 @@ import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { router } from 'expo-router'
 import { createTicket } from '@/services/ticket.service'
-import { CreateTicketForm, IssueTypeWithScope } from '@/features/dashboard/types'
+import { CreateTicketForm, IssueTypeWithScope, TicketCategory } from '@/features/dashboard/types'
 
-const TOTAL_STEPS = 2
+// Update initial form state
+
+
+const TOTAL_STEPS = 3
 
 export const useCreateTicket = () => {
   const queryClient = useQueryClient()
@@ -13,12 +16,16 @@ export const useCreateTicket = () => {
   const [confirmModalVisible, setConfirmModalVisible] = useState(false)
 
   const [form, setForm] = useState<CreateTicketForm>({
-    selectedIssueType: null,
-    placeId: null,
-    shortDescription: '',
-    description: '',
-    attachmentUris: [],
-  })
+  selectedCategory: null,   // ← tambah
+  selectedIssueType: null,
+  placeId: null,
+  shortDescription: '',
+  description: '',
+  attachmentUris: [],
+})
+
+const selectCategory = (category: TicketCategory) =>
+  setForm((f) => ({ ...f, selectedCategory: category, selectedIssueType: null }))
 
   const goNext = () => {
     if (currentStep < TOTAL_STEPS) setCurrentStep((s) => s + 1)
@@ -50,12 +57,17 @@ export const useCreateTicket = () => {
       attachmentUris: f.attachmentUris.filter((u) => u !== uri),
     }))
 
-  const isStep1Valid = !!form.selectedIssueType
-  const isStep2Valid =
-    form.placeId !== null &&
-    form.shortDescription.trim().length > 0 &&
-    form.description.trim().length > 0
-  const canProceed = currentStep === 1 ? isStep1Valid : isStep2Valid
+ const isStep1Valid = !!form.selectedCategory
+const isStep2Valid = !!form.selectedIssueType
+const isStep3Valid =
+  form.placeId !== null &&
+  form.shortDescription.trim().length > 0 &&
+  form.description.trim().length > 0
+
+const canProceed =
+  currentStep === 1 ? isStep1Valid :
+  currentStep === 2 ? isStep2Valid :
+  isStep3Valid
 
   const mutation = useMutation({
     mutationFn: () =>
@@ -87,6 +99,7 @@ export const useCreateTicket = () => {
     isStep2Valid,
     goNext,
     goPrev,
+    selectCategory,
     selectIssueType,
     setPlaceId,
     setShortDescription,

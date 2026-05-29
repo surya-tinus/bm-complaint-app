@@ -128,15 +128,22 @@ export interface CreateTicketPayload {
   priority: PriorityLevel
 }
 
-// Form state untuk multi-step
+export interface TicketCategory {
+  id: number
+  name: string
+  description: string
+  icon: string
+}
+
+// Update CreateTicketForm
 export interface CreateTicketForm {
+  selectedCategory: TicketCategory | null   // ← tambah
   selectedIssueType: IssueTypeWithScope | null
   placeId: number | null
   shortDescription: string
   description: string
   attachmentUris: string[]
 }
-
 // ─── Cancel Request ────────────────────────────────────────
 
 // POST /requests (bukan PATCH /tickets/:id/cancel)
