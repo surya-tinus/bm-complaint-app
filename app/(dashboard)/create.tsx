@@ -20,16 +20,30 @@ import * as ImagePicker from 'expo-image-picker'
 import { useCreateTicket } from '@/features/dashboard/hooks/useCreateTicket'
 import { IssueTypeWithScope, Place } from '@/features/dashboard/types'
 import { Ionicons } from '@expo/vector-icons'
+import { useMemo } from 'react'
 import {
-  MOCK_CATEGORIES,
-  MOCK_ISSUE_TYPES_BY_CATEGORY,
-  MOCK_PLACES,
-  MOCK_PLACES_BY_BUILDING,
-} from '@/mocks/createTicket.mock'
+  CATEGORIES,
+  usePlaces,
+  useIssueTypesByCategory,
+} from '@/features/dashboard/hooks/useCreateTicketData'
 import { TicketCategory } from '@/features/dashboard/types'
 import { LocationPickerSheet } from '@/features/dashboard/components/LocationPickerSheet'
 
 export default function CreateTicketScreen() {
+  const { data: placesList = [], isLoading: placesLoading } = usePlaces()
+  const { data: issueTypesByCategory = {}, isLoading: typesLoading } = useIssueTypesByCategory()
+
+  const placesByBuilding = useMemo(
+    () =>
+      placesList.reduce<Record<string, Place[]>>((acc, place) => {
+        if (!acc[place.building]) acc[place.building] = []
+        acc[place.building].push(place)
+        return acc
+      }, {}),
+    [placesList]
+  )
+
+  const isLoadingLookup = placesLoading || typesLoading
   const router = useRouter()
   const STEP_TITLES = ['SELECT CATEGORY', 'SELECT TYPE', 'DESCRIBE YOUR PROBLEM']
   const {
@@ -52,6 +66,17 @@ export default function CreateTicketScreen() {
     handleCancelSubmit,
     isSubmitting,
   } = useCreateTicket()
+
+  if (placesLoading || typesLoading) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+          <ActivityIndicator color="#fff" size="large" />
+          <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 14 }}>Memuat data...</Text>
+        </View>
+      </SafeAreaView>
+    )
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -94,35 +119,38 @@ export default function CreateTicketScreen() {
       {/* Step Content */}
       <View style={styles.body}>
 {currentStep === 1 && (
-  <Step1Category
-    categories={MOCK_CATEGORIES}
-    selectedCategory={form.selectedCategory}
-    onSelectCategory={selectCategory}
-  />
-)}
+      <Step1Category
+        categories={CATEGORIES}           // ← bukan MOCK_CATEGORIES
+        selectedCategory={form.selectedCategory}
+        onSelectCategory={selectCategory}
+      />
+    )}
 {currentStep === 2 && (
-  <Step2IssueType
-    issueTypes={MOCK_ISSUE_TYPES_BY_CATEGORY[form.selectedCategory?.name ?? ''] ?? []}
-    selectedIssueType={form.selectedIssueType}
-    onSelectIssueType={selectIssueType}
-  />
+  <>
+    {console.log('selectedCategory:', form.selectedCategory?.name)}
+    {console.log('issueTypes for category:', issueTypesByCategory[form.selectedCategory?.name ?? ''])}
+    <Step2IssueType
+      issueTypes={issueTypesByCategory[form.selectedCategory?.name ?? ''] ?? []}
+      selectedIssueType={form.selectedIssueType}
+      onSelectIssueType={selectIssueType}
+    />
+  </>
 )}
 {currentStep === 3 && (
-  <Step3Details
-    // props sama seperti Step2Details sebelumnya
-    places={MOCK_PLACES}
-    placesByBuilding={MOCK_PLACES_BY_BUILDING}
-    selectedPlaceId={form.placeId}
-    onSelectPlace={setPlaceId}
-    shortDescription={form.shortDescription}
-    onChangeShortDescription={setShortDescription}
-    description={form.description}
-    onChangeDescription={setDescription}
-    attachmentUris={form.attachmentUris}
-    onAddAttachment={addAttachment}
-    onRemoveAttachment={removeAttachment}
-  />
-)}
+      <Step3Details
+        places={placesList}              // ← bukan MOCK_PLACES
+        placesByBuilding={placesByBuilding}  // ← bukan MOCK_PLACES_BY_BUILDING
+        selectedPlaceId={form.placeId}
+        onSelectPlace={setPlaceId}
+        shortDescription={form.shortDescription}
+        onChangeShortDescription={setShortDescription}
+        description={form.description}
+        onChangeDescription={setDescription}
+        attachmentUris={form.attachmentUris}
+        onAddAttachment={addAttachment}
+        onRemoveAttachment={removeAttachment}
+      />
+    )}
       </View>
 
       {/* Bottom Buttons */}

@@ -36,6 +36,7 @@ export interface IssueTypeWithScope extends IssueType {
   scope: RoleScope
   description: string
   icon: string
+  categoryName: string   // ← tambah ini
 }
 
 export interface Place {
