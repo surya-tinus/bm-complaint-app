@@ -26,10 +26,13 @@ export function useDashboard() {
   const [activeFilter, setActiveFilter] = useState<FilterLabel>('All')
 
 const { data: tickets = [], isLoading, isError, refetch } = useQuery({
-  queryKey: ['tickets', user?.emplid],  // ← tambah emplid
-  queryFn: () => getAllTickets(),
+  queryKey: ['tickets', user?.emplid],
+  queryFn: () => {
+    console.log('fetching tickets...')  // ← cek apakah refetch terpanggil
+    return getAllTickets()
+  },
   staleTime: 1000 * 60 * 2,
-  enabled: !!user?.emplid,              // ← jangan fetch kalau belum ada user
+  enabled: !!user?.emplid,
 })
 
   // ⚠️ user.name tidak ada di auth store baru — hanya ada emplid & email

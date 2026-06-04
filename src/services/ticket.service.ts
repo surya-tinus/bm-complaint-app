@@ -16,12 +16,15 @@ export const getAllTickets = async (params?: {
   statusId?: number
   search?: string
 }) => {
+  console.log('USE_MOCK value:', config.USE_MOCK)
+  console.log('type:', typeof config.USE_MOCK)
   if (config.USE_MOCK) {
     await delay(600)
     return MOCK_TICKETS
   }
 
   const { data } = await api.get('/tickets', { params })
+  console.log('raw response:', JSON.stringify(data, null, 2))
   console.log('role dari store:', useAuthStore.getState().user?.role) // ✅ rolename → role
   console.log('jumlah ticket:', data.data.length)
   console.log('raw ticket[0]:', JSON.stringify(data.data[0]))
@@ -128,12 +131,10 @@ export const createTicket = async (payload: {
   priority: string
   attachmentUris?: string[]
 }) => {
-  if (config.USE_MOCK) {
-    await delay(1000)
-    return { id: 'TKT-MOCK-001', ...payload }
-  }
+  console.log('createTicket called with:', JSON.stringify(payload))
+  try {
+    const form = new FormData()
 
-  const form = new FormData()
   form.append('issue_type_id', String(payload.issue_type_id))
   form.append('place_id', String(payload.place_id))
   form.append('short_description', payload.short_description)
@@ -150,11 +151,16 @@ export const createTicket = async (payload: {
       type: mimeType,
     } as any)
   })
-
-  const { data } = await api.post('/tickets', form, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  })
-  return data
+  console.log('sending to:', api.defaults.baseURL + '/tickets')
+    const { data } = await api.post('/tickets', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    console.log('createTicket success:', data)
+    return data
+  } catch (error: any) {
+    console.log('createTicket ERROR:', error.response?.status, error.response?.data)
+    throw error
+  }
 }
 
 // ─── CANCEL TICKET ─────────────────────────────────────────

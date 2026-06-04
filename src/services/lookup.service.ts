@@ -39,8 +39,8 @@ const ISSUE_TYPE_META: Record<string, { icon: string; description: string }> = {
 
 export const getPlaces = async (): Promise<Place[]> => {
   try {
-    console.log('calling:', api.defaults.baseURL + '/lookup/places')
-    const { data } = await api.get('/lookup/places')
+    console.log('calling:', api.defaults.baseURL + '/places')
+    const { data } = await api.get('/places')
     console.log('places response:', JSON.stringify(data, null, 2))
     return data.data.map((p: any) => ({
       id: p.id,
@@ -56,8 +56,8 @@ export const getPlaces = async (): Promise<Place[]> => {
 
 export const getIssueTypes = async (): Promise<IssueTypeWithScope[]> => {
   try {
-    console.log('calling:', api.defaults.baseURL + '/lookup/issue-types')
-    const { data } = await api.get('/lookup/issue-types')
+    console.log('calling:', api.defaults.baseURL + '/issue-types')
+    const { data } = await api.get('/issue-types')
     console.log('issue-types response:', JSON.stringify(data, null, 2))
     return data.data.map((t: any) => {
       const meta = ISSUE_TYPE_META[t.name] ?? { icon: 'help-circle-outline', description: '' }

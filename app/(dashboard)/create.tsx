@@ -28,10 +28,27 @@ import {
 } from '@/features/dashboard/hooks/useCreateTicketData'
 import { TicketCategory } from '@/features/dashboard/types'
 import { LocationPickerSheet } from '@/features/dashboard/components/LocationPickerSheet'
+import { useEffect } from 'react'
+import { Toast } from '@/components/ui/Toast'
+import { InlineError } from '@/components/ui/InlineError'
+import { useToast } from '@/hooks/useToast'
 
 export default function CreateTicketScreen() {
-  const { data: placesList = [], isLoading: placesLoading } = usePlaces()
-  const { data: issueTypesByCategory = {}, isLoading: typesLoading } = useIssueTypesByCategory()
+  const { 
+  data: placesList = [], 
+  isLoading: placesLoading,
+  isError: placesError,
+  refetch: refetchPlaces,
+} = usePlaces()
+
+const { 
+  data: issueTypesByCategory = {}, 
+  isLoading: typesLoading,
+  isError: typesError,
+  refetch: refetchTypes,
+} = useIssueTypesByCategory()
+
+  const { toast, showToast, hideToast } = useToast()
 
   const placesByBuilding = useMemo(
     () =>
@@ -65,7 +82,25 @@ export default function CreateTicketScreen() {
     handleConfirmSubmit,
     handleCancelSubmit,
     isSubmitting,
+    isSubmitError,
+    submitError,
+    resetSubmitError,
   } = useCreateTicket()
+
+  // Toast saat submit error
+  useEffect(() => {
+    if (isSubmitError) {
+      const msg = (submitError as any)?.response?.data?.message ?? 'Gagal membuat tiket. Coba lagi.'
+      showToast(msg, 'error')
+      resetSubmitError()
+    }
+  }, [isSubmitError])
+
+  const isFetchError = placesError || typesError
+  const handleRetry = () => {
+    if (placesError) refetchPlaces()
+    if (typesError) refetchTypes()
+  }
 
   if (placesLoading || typesLoading) {
     return (
@@ -81,6 +116,14 @@ export default function CreateTicketScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="light-content" backgroundColor="#1A56C4" />
+
+      {/* Toast */}
+    <Toast
+      visible={toast.visible}
+      message={toast.message}
+      type={toast.type}
+      onHide={hideToast}
+    />
 
       {/* Header */}
       <View style={styles.header}>
@@ -118,40 +161,45 @@ export default function CreateTicketScreen() {
 
       {/* Step Content */}
       <View style={styles.body}>
-{currentStep === 1 && (
-      <Step1Category
-        categories={CATEGORIES}           // ← bukan MOCK_CATEGORIES
-        selectedCategory={form.selectedCategory}
-        onSelectCategory={selectCategory}
-      />
-    )}
-{currentStep === 2 && (
-  <>
-    {console.log('selectedCategory:', form.selectedCategory?.name)}
-    {console.log('issueTypes for category:', issueTypesByCategory[form.selectedCategory?.name ?? ''])}
-    <Step2IssueType
-      issueTypes={issueTypesByCategory[form.selectedCategory?.name ?? ''] ?? []}
-      selectedIssueType={form.selectedIssueType}
-      onSelectIssueType={selectIssueType}
+  {isFetchError ? (
+    <InlineError
+      message="Gagal memuat data. Periksa koneksi internet kamu."
+      onRetry={handleRetry}
     />
-  </>
-)}
-{currentStep === 3 && (
-      <Step3Details
-        places={placesList}              // ← bukan MOCK_PLACES
-        placesByBuilding={placesByBuilding}  // ← bukan MOCK_PLACES_BY_BUILDING
-        selectedPlaceId={form.placeId}
-        onSelectPlace={setPlaceId}
-        shortDescription={form.shortDescription}
-        onChangeShortDescription={setShortDescription}
-        description={form.description}
-        onChangeDescription={setDescription}
-        attachmentUris={form.attachmentUris}
-        onAddAttachment={addAttachment}
-        onRemoveAttachment={removeAttachment}
-      />
-    )}
-      </View>
+  ) : (
+    <>
+      {currentStep === 1 && (
+        <Step1Category
+          categories={CATEGORIES}
+          selectedCategory={form.selectedCategory}
+          onSelectCategory={selectCategory}
+        />
+      )}
+      {currentStep === 2 && (
+        <Step2IssueType
+          issueTypes={issueTypesByCategory[form.selectedCategory?.name ?? ''] ?? []}
+          selectedIssueType={form.selectedIssueType}
+          onSelectIssueType={selectIssueType}
+        />
+      )}
+      {currentStep === 3 && (
+        <Step3Details
+          places={placesList}
+          placesByBuilding={placesByBuilding}
+          selectedPlaceId={form.placeId}
+          onSelectPlace={setPlaceId}
+          shortDescription={form.shortDescription}
+          onChangeShortDescription={setShortDescription}
+          description={form.description}
+          onChangeDescription={setDescription}
+          attachmentUris={form.attachmentUris}
+          onAddAttachment={addAttachment}
+          onRemoveAttachment={removeAttachment}
+        />
+      )}
+    </>
+  )}
+</View>
 
       {/* Bottom Buttons */}
       <View style={styles.bottomBar}>

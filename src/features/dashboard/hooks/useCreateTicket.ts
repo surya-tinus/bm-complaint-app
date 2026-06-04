@@ -80,15 +80,15 @@ const canProceed =
     attachmentUris: form.attachmentUris,   // ← tambah
   }),
     onSuccess: () => {
-      setConfirmModalVisible(false)
-      // Invalidate list tiket supaya auto-refresh
-      queryClient.invalidateQueries({ queryKey: ['tickets'] })
-      router.replace('/(dashboard)')
-    },
-    onError: (error) => {
-    console.log('create error:', error) // ← tambah ini
+    setConfirmModalVisible(false)
+    queryClient.invalidateQueries({ queryKey: ['tickets'] })
+    router.replace('/(dashboard)')
   },
-  })
+  onError: (error: any) => {
+    setConfirmModalVisible(false)  // tutup modal dulu
+    console.log('create error:', error)
+  },
+})
 
   return {
     currentStep,
@@ -112,5 +112,7 @@ const canProceed =
     handleCancelSubmit: () => setConfirmModalVisible(false),
     isSubmitting: mutation.isPending,
     submitError: mutation.error,
+  isSubmitError: mutation.isError,
+  resetSubmitError: mutation.reset,
   }
 }

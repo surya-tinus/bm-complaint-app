@@ -5,7 +5,7 @@
 // ============================================================
 
 export const config = {
-  USE_MOCK: process.env.EXPO_PUBLIC_USE_MOCK !== 'false',
+  USE_MOCK: process.env.EXPO_PUBLIC_USE_MOCK === 'true',
   API_BASE_URL: process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000',
 }
 

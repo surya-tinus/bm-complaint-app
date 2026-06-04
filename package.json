@@ -2,7 +2,7 @@
   "main": "expo-router/entry",
   "name": "complaint-app-bm",
   "scripts": {
-    "start:local": "powershell -Command \"$ip = (Get-NetIPAddress -AddressFamily IPv4 -InterfaceAlias Wi-Fi).IPAddress; $env:EXPO_PUBLIC_API_URL='http://' + $ip + ':3000'; npx expo start -c"
+    "start:local": "powershell -Command \"$ip = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -notlike '169.*' -and $_.IPAddress -ne '127.0.0.1' -and $_.PrefixOrigin -eq 'Dhcp' } | Select-Object -First 1).IPAddress; $env:EXPO_PUBLIC_API_URL='http://' + $ip + ':3000'; npx expo start -c\""
   },
   "dependencies": {
     "@tanstack/react-query": "^5.62.16",
