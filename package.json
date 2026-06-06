@@ -5,14 +5,17 @@
     "start:local": "powershell -Command \"$ip = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -notlike '169.*' -and $_.IPAddress -ne '127.0.0.1' -and $_.PrefixOrigin -eq 'Dhcp' } | Select-Object -First 1).IPAddress; $env:EXPO_PUBLIC_API_URL='http://' + $ip + ':3000'; npx expo start -c\""
   },
   "dependencies": {
+    "@expo-google-fonts/rubik": "^0.4.2",
     "@tanstack/react-query": "^5.62.16",
     "axios": "^1.15.0",
     "expo": "~54.0.0",
     "expo-constants": "~18.0.13",
+    "expo-font": "~14.0.12",
     "expo-image-picker": "~17.0.10",
     "expo-linking": "~8.0.11",
     "expo-notifications": "~0.32.16",
     "expo-router": "~6.0.23",
+    "expo-splash-screen": "~31.0.13",
     "expo-status-bar": "~3.0.9",
     "react": "19.1.0",
     "react-dom": "19.1.0",

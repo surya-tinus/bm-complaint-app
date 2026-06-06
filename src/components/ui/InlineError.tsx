@@ -1,7 +1,7 @@
 // src/components/ui/InlineError.tsx
 import React from 'react'
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
-import { Ionicons } from '@expo/vector-icons'
+import { colors, spacing, typography, radius } from '@/constants'
 
 interface Props {
   message: string
@@ -11,11 +11,9 @@ interface Props {
 export function InlineError({ message, onRetry }: Props) {
   return (
     <View style={styles.container}>
-      <Ionicons name="wifi-outline" size={32} color="#D1D5DB" />
       <Text style={styles.message}>{message}</Text>
       {onRetry && (
         <TouchableOpacity style={styles.retryBtn} onPress={onRetry} activeOpacity={0.8}>
-          <Ionicons name="refresh-outline" size={16} color="#1A56C4" />
           <Text style={styles.retryText}>Coba Lagi</Text>
         </TouchableOpacity>
       )}
@@ -28,29 +26,27 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
+    gap: spacing.md,
     padding: 32,
   },
   message: {
-    fontSize: 14,
-    color: '#6B7280',
+    fontSize: typography.sizes.body,
+    fontFamily: typography.fonts.regular,
+    color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 20,
   },
   retryBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 20,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.chip,
     borderWidth: 1.5,
-    borderColor: '#1A56C4',
-    marginTop: 4,
+    borderColor: colors.brand,
+    marginTop: spacing.xs,
   },
   retryText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1A56C4',
+    fontSize: typography.sizes.button,
+    fontFamily: typography.fonts.medium,
+    color: colors.brand,
   },
 })

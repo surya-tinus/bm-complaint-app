@@ -1,5 +1,7 @@
+//src/components/ui/SearchBar.tsx
 import React from 'react'
-import { View, TextInput, TouchableOpacity, Text, StyleSheet } from 'react-native'
+import { View, TextInput, StyleSheet } from 'react-native'
+import { colors, spacing, typography, radius } from '@/constants'
 
 interface Props {
   value: string
@@ -10,17 +12,14 @@ interface Props {
 export function SearchBar({ value, onChangeText, placeholder }: Props) {
   return (
     <View style={styles.container}>
-      <Text style={styles.menuIcon}>☰</Text>
       <TextInput
         style={styles.input}
-        placeholder={placeholder ?? 'Search...'}
-        placeholderTextColor="#9CA3AF"
+        placeholder={placeholder ?? 'Cari...'}
+        placeholderTextColor={colors.textMuted}
         value={value}
         onChangeText={onChangeText}
+        returnKeyType="search"
       />
-      <TouchableOpacity>
-        <Text style={styles.searchIcon}>🔍</Text>
-      </TouchableOpacity>
     </View>
   )
 }
@@ -29,32 +28,22 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    marginHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 12,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    backgroundColor: colors.bgCard,
+    borderRadius: radius.input,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
     shadowColor: '#000',
     shadowOpacity: 0.06,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },
     elevation: 2,
-  },
-  menuIcon: {
-    fontSize: 18,
-    color: '#9CA3AF',
-    marginRight: 10,
+    marginBottom: spacing.md,
   },
   input: {
     flex: 1,
-    fontSize: 14,
-    color: '#1F2937',
+    fontSize: typography.sizes.body,
+    fontFamily: typography.fonts.regular,
+    color: colors.textPrimary,
     padding: 0,
-  },
-  searchIcon: {
-    fontSize: 16,
-    marginLeft: 8,
   },
 })

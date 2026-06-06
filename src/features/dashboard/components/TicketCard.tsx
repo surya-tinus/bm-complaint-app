@@ -1,156 +1,349 @@
-// src/features/dashboard/components/TicketCard.tsx
 import React from 'react'
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { StatusBadge } from '@/components/ui/StatusBadge'
+import { colors, spacing, typography, radius } from '@/constants'
+import type { CategoryKey, PriorityKey } from '@/constants'
+import { normalizeStatus } from '@/utils/normalizeStatus'
 
-const getIssueTypeIcon = (issueTypeName: string): keyof typeof Ionicons.glyphMap => {
-  const map: Record<string, keyof typeof Ionicons.glyphMap> = {
-    'Electrical Problem':   'flash-outline',
-    'Plumbing':             'water-outline',
-    'HVAC':                 'thermometer-outline',
-    'Cleanliness':          'sparkles-outline',
-    'Security':             'shield-checkmark-outline',
-    'Equipment':            'construct-outline',
-    'Building & Facility':  'business-outline',
-    'Staff Assistance':     'people-outline',
-    'Peralatan':            'construct-outline',
-    'Fasilitas':            'business-outline',
-    'Kebersihan':           'sparkles-outline',
-    'Keamanan':             'shield-checkmark-outline',
-    'Maintenance':          'build-outline',
+// ─── Category helpers (from v2) ──────────────────────────────────────────────
+
+function resolveCategoryKey(raw: string): CategoryKey {
+  const map: Record<string, CategoryKey> = {
+    electrical:             'electrical',
+    plumbing:               'plumbing',
+    room_condition:         'room_condition',
+    cleaning:               'cleaning',
+    staff_help:             'staff_help',
+    cleanliness:            'cleanliness',
+    facility_condition:     'facility_condition',
+    'Electrical Problem':   'electrical',
+    'Plumbing':             'plumbing',
+    'Room Condition':       'room_condition',
+    'Cleaning':             'cleaning',
+    'Staff Assistance':     'staff_help',
+    'Cleanliness':          'cleanliness',
+    'Facility Condition':   'facility_condition',
+    'HVAC':                 'facility_condition',
+    'Equipment':            'room_condition',
+    'Maintenance':          'facility_condition',
+    'Building & Facility':  'facility_condition',
+    'Cleaning Issue':       'cleaning',
+    'Facility Issue':       'facility_condition',
+    'General Information':  'facility_condition',
   }
-  return map[issueTypeName] ?? 'ticket-outline'
+  return map[raw] ?? 'facility_condition'
 }
 
-const getIssueTypeColor = (issueTypeName: string): string => {
-  const map: Record<string, string> = {
-    'Electrical Problem':   '#F59E0B',
-    'Plumbing':             '#0EA5E9',
-    'HVAC':                 '#06B6D4',
-    'Cleanliness':          '#3B82F6',
-    'Security':             '#F59E0B',
-    'Equipment':            '#8B5CF6',
-    'Building & Facility':  '#EF4444',
-    'Staff Assistance':     '#10B981',
-    'Peralatan':            '#8B5CF6',
-    'Fasilitas':            '#EF4444',
-    'Kebersihan':           '#3B82F6',
-    'Keamanan':             '#F59E0B',
-    'Maintenance':          '#10B981',
+const CATEGORY_LABEL: Record<CategoryKey, string> = {
+  electrical:         'Electrical',
+  plumbing:           'Plumbing',
+  room_condition:     'Room Condition',
+  cleaning:           'Cleaning',
+  staff_help:         'Staff Help',
+  cleanliness:        'Cleanliness',
+  facility_condition: 'Facility',
+}
+
+// Maps CategoryKey → Ionicons glyph (visual identity from v1)
+const CATEGORY_ICON: Record<CategoryKey, keyof typeof Ionicons.glyphMap> = {
+  electrical:         'flash-outline',
+  plumbing:           'water-outline',
+  room_condition:     'construct-outline',
+  cleaning:           'sparkles-outline',
+  staff_help:         'people-outline',
+  cleanliness:        'sparkles-outline',
+  facility_condition: 'business-outline',
+}
+
+// ─── Timestamp helper (from v2) ───────────────────────────────────────────────
+
+function formatTimestamp(raw: string | undefined | null): string {
+  if (!raw) return ''
+  const date = new Date(raw)
+  const diff = Date.now() - date.getTime()
+  const hours = diff / (1000 * 60 * 60)
+  if (hours < 1) {
+    const mins = Math.floor(diff / (1000 * 60))
+    return `${mins} menit lalu`
   }
-  return map[issueTypeName] ?? '#6B7280'
+  if (hours < 24) return `${Math.floor(hours)} jam lalu`
+  return date.toLocaleDateString('id-ID', {
+    day: 'numeric', month: 'short', year: 'numeric',
+  })
 }
 
-const PRIORITY_CONFIG: Record<string, { label: string; color: string }> = {
-  low:    { label: 'Low',    color: '#10B981' },
-  medium: { label: 'Medium', color: '#F59E0B' },
-  high:   { label: 'High',   color: '#EF4444' },
-}
+// ─── Props ────────────────────────────────────────────────────────────────────
 
 interface Props {
   ticket: any
   onPress: (ticket: any) => void
+  role?: 'user' | 'staff'
+  section?: 'active' | 'assigned' | 'history' | 'user'
+  onAccept?: (ticket: any) => void
+  onReject?: (ticket: any) => void
+  onUpdateStatus?: (ticket: any) => void
 }
 
-export function TicketCard({ ticket, onPress }: Props) {
-  // Support both backend snake_case and frontend camelCase
-  const issueTypeName = ticket.issue_type_name ?? ticket.issueType?.name ?? ''
-  const shortDesc = ticket.short_description ?? ticket.shortDescription ?? ''
-  const statusName = ticket.status_name ?? ticket.status ?? ''
-  const building = ticket.building ?? ticket.place?.building ?? ''
-  const placeName = ticket.place_name ?? ticket.place?.name ?? ''
-  const reportedAt = ticket.created_at
-    ? new Date(ticket.created_at).toLocaleDateString('id-ID', {
-        day: 'numeric', month: 'short', year: 'numeric',
-      })
-    : ticket.reportedAt ?? ''
-  const priority = ticket.priority ?? 'medium'
+// ─── Component ────────────────────────────────────────────────────────────────
 
-  const iconName = getIssueTypeIcon(issueTypeName)
-  const color = getIssueTypeColor(issueTypeName)
-  const priorityConfig = PRIORITY_CONFIG[priority] ?? PRIORITY_CONFIG.medium
+export function TicketCard({
+  ticket,
+  onPress,
+  role = 'user',
+  section = 'user',
+  onAccept,
+  onReject,
+  onUpdateStatus,
+}: Props) {
+  // Field resolution: support both snake_case (backend) and camelCase (frontend)
+  const categoryRaw  = ticket.category ?? ticket.issue_type_name ?? ticket.issueType?.name ?? ''
+  const shortDesc    = ticket.short_description ?? ticket.shortDescription ?? ''
+  const statusRaw    = ticket.status_name ?? ticket.status ?? ''
+  const building     = ticket.building ?? ticket.place?.building ?? ''
+  const placeName    = ticket.place_name ?? ticket.place?.name ?? ''
+  const timestamp    = formatTimestamp(ticket.created_at)
+  const priorityRaw  = (ticket.priority ?? 'medium') as PriorityKey
+
+  const categoryKey    = resolveCategoryKey(categoryRaw)
+  const categoryColor  = colors.category[categoryKey].dot
+  const categoryBg     = colors.category[categoryKey].bg
+  const categoryLabel  = CATEGORY_LABEL[categoryKey]
+  const iconName       = CATEGORY_ICON[categoryKey]
+  const priorityConfig = colors.priority[priorityRaw] ?? colors.priority.medium
 
   return (
-    <TouchableOpacity style={styles.card} onPress={() => onPress(ticket)} activeOpacity={0.85}>
-
-      {/* Type + Priority row */}
+    <TouchableOpacity
+      style={styles.card}
+      onPress={() => onPress(ticket)}
+      activeOpacity={0.85}
+    >
+      {/* ── Row 1: Category dot + label / Priority badge ── */}
       <View style={styles.typeRow}>
         <View style={styles.typeLeft}>
-          <View style={[styles.typeDot, { backgroundColor: color }]} />
-          <Text style={[styles.typeLabel, { color }]}>{issueTypeName}</Text>
+          <View style={[styles.typeDot, { backgroundColor: categoryColor }]} />
+          <Text style={[styles.typeLabel, { color: categoryColor }]}>
+            {categoryLabel}
+          </Text>
         </View>
-        <View style={[styles.priorityBadge, { backgroundColor: priorityConfig.color + '18' }]}>
-          <Text style={[styles.priorityText, { color: priorityConfig.color }]}>
-            {priorityConfig.label}
+        <View style={[styles.priorityBadge, { backgroundColor: priorityConfig.bg }]}>
+          <Text style={[styles.priorityText, { color: priorityConfig.text }]}>
+            {priorityRaw.toUpperCase()}
           </Text>
         </View>
       </View>
 
-      {/* Title row */}
+      {/* ── Row 2: Icon circle + ID/Title + StatusBadge ── */}
       <View style={styles.titleRow}>
-        <View style={[styles.iconCircle, { backgroundColor: color + '18' }]}>
-          <Ionicons name={iconName} size={20} color={color} />
+        <View style={[styles.iconCircle, { backgroundColor: categoryBg }]}>
+          <Ionicons name={iconName} size={20} color={categoryColor} />
         </View>
         <View style={styles.titleInfo}>
           <Text style={styles.ticketId}>#{ticket.id}</Text>
           <Text style={styles.title} numberOfLines={1}>{shortDesc}</Text>
         </View>
-        <StatusBadge status={statusName} />
+        <StatusBadge status={statusRaw} role={role} />
       </View>
 
       <View style={styles.divider} />
 
-      {/* Meta */}
-      <View style={styles.metaItem}>
-        <Ionicons name="location-outline" size={13} color="#9CA3AF" />
-        <Text style={styles.metaText} numberOfLines={1}>{building}</Text>
-      </View>
-      <View style={styles.metaItem}>
-        <Ionicons name="enter-outline" size={13} color="#9CA3AF" />
-        <Text style={styles.metaText}>{placeName}</Text>
-      </View>
-      <View style={styles.metaItem}>
-        <Ionicons name="time-outline" size={13} color="#9CA3AF" />
-        <Text style={styles.metaText}>Reported on : {reportedAt}</Text>
-      </View>
+      {/* ── Meta rows: icon + text inline (v1 style) ── */}
+      {building ? (
+        <View style={styles.metaItem}>
+          <Ionicons name="location-outline" size={13} color="#9CA3AF" />
+          <Text style={styles.metaText} numberOfLines={1}>{building}</Text>
+        </View>
+      ) : null}
+      {placeName ? (
+        <View style={styles.metaItem}>
+          <Ionicons name="enter-outline" size={13} color="#9CA3AF" />
+          <Text style={styles.metaText}>{placeName}</Text>
+        </View>
+      ) : null}
+      {timestamp ? (
+        <View style={styles.metaItem}>
+          <Ionicons name="time-outline" size={13} color="#9CA3AF" />
+          <Text style={styles.metaText}>Reported on : {timestamp}</Text>
+        </View>
+      ) : null}
 
+      {/* ── Action buttons (from v2) ── */}
+      {section === 'assigned' && (
+        <View style={styles.actionRow}>
+          <TouchableOpacity
+            style={styles.btnReject}
+            onPress={() => onReject?.(ticket)}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.btnRejectText}>Tolak</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.btnAccept}
+            onPress={() => onAccept?.(ticket)}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.btnAcceptText}>Terima</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {section === 'active' && (
+        <View style={styles.actionRow}>
+          <TouchableOpacity
+            style={styles.btnUpdateStatus}
+            onPress={() => onUpdateStatus?.(ticket)}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.btnUpdateStatusText}>Perbarui Status</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </TouchableOpacity>
   )
 }
 
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 12,
+    backgroundColor: colors.bgCard,
+    borderRadius: radius.card,
+    padding: spacing.lg,
+    marginBottom: spacing.md,
     shadowColor: '#000',
     shadowOpacity: 0.07,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 2 },
     elevation: 3,
   },
+
+  // Row 1
   typeRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 10,
+    marginBottom: spacing.sm,
   },
-  typeLeft: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  typeDot: { width: 8, height: 8, borderRadius: 4 },
-  typeLabel: { fontSize: 12, fontWeight: '600', letterSpacing: 0.3 },
-  priorityBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
-  priorityText: { fontSize: 11, fontWeight: '600' },
-  titleRow: { flexDirection: 'row', alignItems: 'center' },
+  typeLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  typeDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  typeLabel: {
+    fontSize: typography.sizes.badge,
+    fontFamily: typography.fonts.medium,
+    letterSpacing: 0.3,
+  },
+  priorityBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: radius.badge,
+  },
+  priorityText: {
+    fontSize: typography.sizes.badge,
+    fontFamily: typography.fonts.medium,
+  },
+
+  // Row 2
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.xs,
+  },
   iconCircle: {
-    width: 40, height: 40, borderRadius: 10,
-    alignItems: 'center', justifyContent: 'center',
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
   },
-  titleInfo: { flex: 1, marginLeft: 10 },
-  ticketId: { fontSize: 11, color: '#9CA3AF', fontWeight: '500', marginBottom: 1 },
-  title: { fontSize: 15, fontWeight: '700', color: '#111827' },
-  divider: { height: 1, backgroundColor: '#F3F4F6', marginVertical: 12 },
-  metaItem: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 3 },
-  metaText: { fontSize: 12, color: '#6B7280' },
+  titleInfo: {
+    flex: 1,
+  },
+  ticketId: {
+    fontSize: typography.sizes.cardId,
+    fontFamily: typography.fonts.regular,
+    color: colors.textMuted,
+    marginBottom: 2,
+  },
+  title: {
+    fontSize: typography.sizes.cardTitle,
+    fontFamily: typography.fonts.bold,
+    color: colors.textPrimary,
+  },
+
+  // Divider
+  divider: {
+    height: 1,
+    backgroundColor: colors.borderSubtle,
+    marginVertical: spacing.md,
+  },
+
+  // Meta
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 3,
+  },
+  metaText: {
+    fontSize: typography.sizes.body,
+    fontFamily: typography.fonts.regular,
+    color: colors.textSecondary,
+  },
+
+  // Action buttons
+  actionRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+  },
+  btnReject: {
+    flex: 1,
+    height: 36,
+    borderRadius: radius.button,
+    borderWidth: 1.5,
+    borderColor: '#DC2626',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  btnRejectText: {
+    fontSize: typography.sizes.button,
+    fontFamily: typography.fonts.medium,
+    color: '#DC2626',
+  },
+  btnAccept: {
+    flex: 1.5,
+    height: 36,
+    borderRadius: radius.button,
+    backgroundColor: colors.brand,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  btnAcceptText: {
+    fontSize: typography.sizes.button,
+    fontFamily: typography.fonts.medium,
+    color: colors.textOnBrand,
+  },
+  btnUpdateStatus: {
+    flex: 1,
+    height: 36,
+    borderRadius: radius.button,
+    borderWidth: 1.5,
+    borderColor: colors.brand,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  btnUpdateStatusText: {
+    fontSize: typography.sizes.button,
+    fontFamily: typography.fonts.medium,
+    color: colors.brand,
+  },
 })

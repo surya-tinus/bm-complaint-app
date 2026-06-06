@@ -1,5 +1,7 @@
+//src/features/dashboard/components/FilterChips.tsx
 import React from 'react'
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native'
+import { ScrollView, TouchableOpacity, Text, StyleSheet } from 'react-native'
+import { colors, spacing, typography, radius } from '@/constants'
 import { FilterLabel, FILTER_OPTIONS } from '@/features/dashboard/hooks/useDashboard'
 
 interface Props {
@@ -9,76 +11,54 @@ interface Props {
 
 export function FilterChips({ activeFilter, onFilterChange }: Props) {
   return (
-    <View style={styles.row}>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
-        {FILTER_OPTIONS.map((f) => (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={styles.scrollContent}
+    >
+      {FILTER_OPTIONS.map((f) => {
+        const isActive = activeFilter === f
+        return (
           <TouchableOpacity
             key={f}
-            style={[styles.chip, activeFilter === f && styles.chipActive]}
+            style={[styles.chip, isActive && styles.chipActive]}
             onPress={() => onFilterChange(f)}
+            activeOpacity={0.75}
           >
-            <Text style={[styles.chipText, activeFilter === f && styles.chipTextActive]}>
-              {f}
+            <Text style={[styles.chipText, isActive && styles.chipTextActive]}>
+            {f}
             </Text>
           </TouchableOpacity>
-        ))}
-      </ScrollView>
-    </View>
+        )
+      })}
+    </ScrollView>
   )
 }
 
 const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-    paddingLeft: 16,
-  },
-  iconBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 10,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 1,
-  },
-  filterIcon: {
-    fontSize: 16,
-  },
   scrollContent: {
-    paddingRight: 16,
-    gap: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
+    gap: spacing.sm,
+    paddingBottom: spacing.md,
   },
   chip: {
-    paddingHorizontal: 16,
+    paddingHorizontal: spacing.lg,
     paddingVertical: 7,
-    borderRadius: 20,
-    backgroundColor: '#fff',
+    borderRadius: radius.chip,
+    backgroundColor: colors.bgCard,
     borderWidth: 1.5,
-    borderColor: '#E5E7EB',
+    borderColor: colors.borderDefault,
   },
   chipActive: {
-    backgroundColor: '#1A56C4',
-    borderColor: '#1A56C4',
+    backgroundColor: colors.brand,
+    borderColor: colors.brand,
   },
   chipText: {
-    fontSize: 13,
-    color: '#374151',
-    fontWeight: '500',
+    fontSize: typography.sizes.label,
+    fontFamily: typography.fonts.medium,
+    color: colors.textPrimary,
   },
   chipTextActive: {
-    color: '#fff',
-    fontWeight: '600',
+    color: colors.textOnBrand,
+    fontFamily: typography.fonts.medium,
   },
 })

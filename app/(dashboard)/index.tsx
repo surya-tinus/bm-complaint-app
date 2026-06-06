@@ -1,24 +1,21 @@
-// app/(dashboard)/index.tsx
 import React from 'react'
 import {
   View,
   Text,
   FlatList,
-  ScrollView,
   TouchableOpacity,
   StyleSheet,
   StatusBar,
 } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Ionicons } from '@expo/vector-icons'
 import { SearchBar } from '@/components/ui/SearchBar'
 import { TicketCard } from '@/features/dashboard/components/TicketCard'
 import { FilterChips } from '@/features/dashboard/components/FilterChips'
-import { StatusBadge } from '@/components/ui/StatusBadge'
 import { DashboardSkeleton } from '@/components/ui/Skeleton'
 import { useDashboard } from '@/features/dashboard/hooks/useDashboard'
 import { useAuthStore } from '@/store/auth.store'
+import { colors, spacing, typography, radius, screenPadding } from '@/constants'
 
 export default function DashboardScreen() {
   const clearAuth = useAuthStore((s) => s.clearAuth)
@@ -29,6 +26,7 @@ export default function DashboardScreen() {
     activeFilter, setActiveFilter,
     filteredTickets,
     assignedTickets,
+    activeTickets,
     stats,
     role,
     isLoading,
@@ -51,241 +49,240 @@ export default function DashboardScreen() {
     router.replace('/(auth)/login')
   }
 
-  return (
-    <View style={[styles.safeArea, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="light-content" backgroundColor="#1A56C4" />
+  const handleAccept = (ticket: any) => {
+    // TODO: call accept mutation
+  }
 
-      {/* Header */}
-      <View style={styles.header}>
+  const handleReject = (ticket: any) => {
+    // TODO: call reject mutation — show reason sheet
+  }
+
+  const handleUpdateStatus = (ticket: any) => {
+    router.push(`/(dashboard)/${ticket.id}?openSheet=true`)
+  }
+
+  return (
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      <StatusBar barStyle="light-content" backgroundColor={colors.brand} />
+
+      {/* App Bar */}
+      <View style={styles.appBar}>
         <TouchableOpacity
           style={styles.backBtn}
           onPress={handleLogout}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Ionicons name="chevron-back" size={20} color="#fff" />
+          <Text style={styles.backBtnText}>←</Text>
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>Manage Ticket</Text>
-          <Text style={styles.headerSubtitle}>Check your ticket status here</Text>
+          <Text style={styles.appBarTitle}>
+            {isStaff ? 'Home' : 'My Tickets'}
+          </Text>
+          <Text style={styles.appBarSubtitle}>
+            {isStaff ? 'Summary of today\'s activity' : 'Track your ticket status here'}
+          </Text>
         </View>
-        <TouchableOpacity
-          onPress={() => router.push('/(dashboard)/notifications')}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-          <Ionicons name="notifications-outline" size={22} color="#fff" />
-        </TouchableOpacity>
       </View>
 
       {/* Body */}
       <View style={styles.body}>
         {isError ? (
-          <View style={styles.centered}>
-            <Ionicons name="warning-outline" size={40} color="#9CA3AF" />
-            <Text style={styles.errorText}>Gagal memuat tiket</Text>
-            <TouchableOpacity style={styles.retryBtn} onPress={() => refetch()}>
-              <Text style={styles.retryText}>Coba lagi</Text>
-            </TouchableOpacity>
-          </View>
+          <ErrorState onRetry={refetch} />
         ) : isLoading ? (
           <>
-            <SearchBar
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              placeholder="Search ticket by ID or problem..."
-            />
-            <FilterChips activeFilter={activeFilter} onFilterChange={setActiveFilter} />
-            <FlatList
-              data={[]}
-              renderItem={null}
-              ListHeaderComponent={<DashboardSkeleton isStaff={isStaff} />}
-              contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 100 }]}
-              showsVerticalScrollIndicator={false}
-            />
+            <View style={styles.searchArea}>
+              <SearchBar
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholder="Search by ticket ID or issue..."
+              />
+              <FilterChips activeFilter={activeFilter} onFilterChange={setActiveFilter} />
+            </View>
+            <DashboardSkeleton isStaff={isStaff} />
           </>
         ) : (
-          <>
-            <SearchBar
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              placeholder="Search ticket by ID or problem..."
-            />
-            <FilterChips activeFilter={activeFilter} onFilterChange={setActiveFilter} />
-
-            <FlatList
-              data={filteredTickets}
-              keyExtractor={(item) => String(item.id)}
-              renderItem={({ item }) => (
-                <TicketCard ticket={item} onPress={handleTicketPress} />
-              )}
-              contentContainerStyle={[
-                styles.listContent,
-                { paddingBottom: insets.bottom + 100 },
-              ]}
-              showsVerticalScrollIndicator={false}
-              ListHeaderComponent={
-                isStaff ? (
-                  <StaffHeader
-                    stats={stats}
-                    assignedTickets={assignedTickets}
-                    onTicketPress={handleTicketPress}
+          <FlatList
+            data={isStaff ? activeTickets : filteredTickets}
+            keyExtractor={(item) => String(item.id)}
+            renderItem={({ item }) => (
+              <TicketCard
+                ticket={item}
+                onPress={handleTicketPress}
+                role={isStaff ? 'staff' : 'user'}
+                section={isStaff ? 'active' : 'user'}
+                onUpdateStatus={handleUpdateStatus}
+              />
+            )}
+            contentContainerStyle={[
+              styles.listContent,
+              { paddingBottom: insets.bottom + 100 },
+            ]}
+            showsVerticalScrollIndicator={false}
+            ListHeaderComponent={
+              <>
+                <View style={styles.searchArea}>
+                  <SearchBar
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                    placeholder="Search by ticket ID or issue..."
                   />
-                ) : null
-              }
-              ListEmptyComponent={<EmptyState hasQuery={!!searchQuery} />}
-              ListFooterComponent={filteredTickets.length > 0 ? <ListFooter /> : null}
-            />
-          </>
+                  {!isStaff && (
+                    <FilterChips activeFilter={activeFilter} onFilterChange={setActiveFilter} />
+                  )}
+                </View>
+
+                {isStaff && stats && (
+                  <StaffOverview stats={stats} />
+                )}
+
+                {isStaff && assignedTickets.length > 0 && (
+                  <AssignedSection
+                    tickets={assignedTickets}
+                    onPress={handleTicketPress}
+                    onAccept={handleAccept}
+                    onReject={handleReject}
+                  />
+                )}
+
+                {isStaff && (
+                  <SectionLabel label="Active Tickets" />
+                )}
+              </>
+            }
+            ListEmptyComponent={
+              <EmptyState
+                hasQuery={!!searchQuery}
+                isStaff={isStaff}
+              />
+            }
+            ListFooterComponent={
+  filteredTickets.length > 0 ? (
+    <View style={styles.listFooter}>
+      <View style={styles.listFooterLine} />
+      <Text style={styles.listFooterText}>All tickets have been loaded</Text>
+      <View style={styles.listFooterLine} />
+    </View>
+  ) : null
+}
+          />
         )}
       </View>
+      
 
-      {/* FAB — hanya untuk User */}
-      {role !== 'Staff' && role !== 'Admin' && (
+      {/* FAB — user only */}
+      {!isStaff && role !== 'Admin' && (
         <TouchableOpacity
           style={[styles.fab, { bottom: insets.bottom + 20 }]}
           onPress={handleCreateTicket}
           activeOpacity={0.85}
         >
-          <Ionicons name="add" size={28} color="#fff" />
+          <Text style={styles.fabIcon}>+</Text>
         </TouchableOpacity>
       )}
     </View>
   )
 }
 
-// ─── Staff Header ──────────────────────────────────────────
+// ─── Staff Overview Tiles ──────────────────────────────────
 
-function StaffHeader({
+function StaffOverview({
   stats,
-  assignedTickets,
-  onTicketPress,
 }: {
-  stats: { assigned: number; active: number; completed: number } | null
-  assignedTickets: any[]
-  onTicketPress: (ticket: any) => void
+  stats: { assigned: number; active: number; completed: number }
 }) {
   return (
-    <>
-      {stats && (
-        <View style={styles.statsCard}>
-          <StatItem icon="ticket-outline" value={stats.assigned} label="Assigned" color="#1A56C4" />
-          <View style={styles.statsDivider} />
-          <StatItem icon="construct-outline" value={stats.active} label="Active" color="#F59E0B" />
-          <View style={styles.statsDivider} />
-          <StatItem icon="checkmark-circle-outline" value={stats.completed} label="Completed" color="#10B981" />
-        </View>
-      )}
-      {assignedTickets.length > 0 && (
-        <AssignedTicketsRow tickets={assignedTickets} onPress={onTicketPress} />
-      )}
-    </>
-  )
-}
-
-function StatItem({
-  icon, value, label, color,
-}: {
-  icon: keyof typeof Ionicons.glyphMap
-  value: number
-  label: string
-  color: string
-}) {
-  return (
-    <View style={styles.statItem}>
-      <Ionicons name={icon} size={22} color={color} style={{ marginBottom: 4 }} />
-      <Text style={[styles.statValue, { color }]}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
+    <View style={styles.overviewGrid}>
+      <View style={[styles.overviewTile, { backgroundColor: colors.brand }]}>
+        <Text style={styles.overviewNum}>{stats.assigned}</Text>
+        <Text style={styles.overviewLabel}>New Tickets</Text>
+      </View>
+      <View style={[styles.overviewTile, { backgroundColor: colors.brandDim }]}>
+        <Text style={[styles.overviewNum, { color: colors.brandText }]}>{stats.active}</Text>
+        <Text style={[styles.overviewLabel, { color: colors.textMuted }]}>Active</Text>
+      </View>
+      <View style={[styles.overviewTileWide, {
+        backgroundColor: colors.bgCard,
+        borderWidth: 0.5,
+        borderColor: colors.borderDefault,
+      }]}>
+        <Text style={[styles.overviewNum, { color: colors.textPrimary, fontSize: 22 }]}>
+          {stats.completed}
+        </Text>
+        <Text style={[styles.overviewLabel, { color: colors.textSecondary }]}>
+          Completed
+        </Text>
+      </View>
     </View>
   )
 }
 
-// ─── Assigned Tickets Horizontal Row ──────────────────────
+// ─── Assigned Section ──────────────────────────────────────
 
-function AssignedTicketsRow({
-  tickets, onPress,
+function AssignedSection({
+  tickets,
+  onPress,
+  onAccept,
+  onReject,
 }: {
   tickets: any[]
   onPress: (ticket: any) => void
+  onAccept: (ticket: any) => void
+  onReject: (ticket: any) => void
 }) {
   return (
-    <View style={styles.assignedSection}>
-      <View style={styles.assignedHeader}>
-        <View style={styles.assignedHeaderLeft}>
-          <View style={styles.assignedDot} />
-          <Text style={styles.assignedTitle}>My Active Tickets</Text>
-        </View>
-        <Text style={styles.assignedCount}>
-          {tickets.length} ticket{tickets.length > 1 ? 's' : ''}
-        </Text>
-      </View>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.assignedScroll}
-      >
-        {tickets.map((ticket) => (
-          <AssignedTicketCard key={ticket.id} ticket={ticket} onPress={onPress} />
-        ))}
-      </ScrollView>
+    <View style={styles.sectionWrap}>
+      <SectionLabel label="New Tickets" />
+      {tickets.map((ticket) => (
+        <TicketCard
+          key={ticket.id}
+          ticket={ticket}
+          onPress={onPress}
+          role="staff"
+          section="assigned"
+          onAccept={onAccept}
+          onReject={onReject}
+        />
+      ))}
     </View>
   )
 }
 
-function AssignedTicketCard({
-  ticket, onPress,
-}: {
-  ticket: any
-  onPress: (ticket: any) => void
-}) {
-  const PRIORITY_COLORS: Record<string, string> = {
-    low: '#10B981', medium: '#F59E0B', high: '#EF4444',
-  }
-  const priorityColor = PRIORITY_COLORS[ticket.priority] ?? '#6B7280'
-  const shortDesc = ticket.short_description ?? ticket.shortDescription ?? ''
-  const building = ticket.building ?? ticket.place?.building ?? ''
-  const statusName = ticket.status_name ?? ticket.status ?? ''
+// ─── Section Label ─────────────────────────────────────────
 
+function SectionLabel({ label }: { label: string }) {
   return (
-    <TouchableOpacity
-      style={styles.assignedCard}
-      onPress={() => onPress(ticket)}
-      activeOpacity={0.85}
-    >
-      <View style={[styles.assignedCardAccent, { backgroundColor: priorityColor }]} />
-      <View style={styles.assignedCardBody}>
-        <StatusBadge status={statusName} />
-        <Text style={styles.assignedCardTitle} numberOfLines={2}>{shortDesc}</Text>
-        <Text style={styles.assignedCardId}>#{ticket.id}</Text>
-        <View style={styles.assignedCardMeta}>
-          <Ionicons name="location-outline" size={11} color="#9CA3AF" />
-          <Text style={styles.assignedCardMetaText} numberOfLines={1}>{building}</Text>
-        </View>
-      </View>
-    </TouchableOpacity>
+    <Text style={styles.sectionLabel}>{label}</Text>
   )
 }
 
-// ─── Empty / Footer ────────────────────────────────────────
+// ─── Error State ───────────────────────────────────────────
 
-function EmptyState({ hasQuery }: { hasQuery: boolean }) {
+function ErrorState({ onRetry }: { onRetry: () => void }) {
+  return (
+    <View style={styles.centered}>
+      <Text style={styles.emptyTitle}>Failed to load tickets</Text>
+      <Text style={styles.emptySubtitle}>Check your connection and try again</Text>
+      <TouchableOpacity style={styles.retryBtn} onPress={onRetry}>
+        <Text style={styles.retryText}>Try again</Text>
+      </TouchableOpacity>
+    </View>
+  )
+}
+
+// ─── Empty State ───────────────────────────────────────────
+
+function EmptyState({ hasQuery, isStaff }: { hasQuery: boolean; isStaff: boolean }) {
+  const title = hasQuery ? 'No results found' : 'No tickets yet'
+  const subtitle = hasQuery
+    ? 'Try a different keyword or check the ticket number.'
+    : isStaff
+      ? 'Spotted an issue nearby? Tap + to report it.'
+      : 'No tickets are currently being handled.'
+
   return (
     <View style={styles.emptyState}>
-      <Ionicons name="ticket-outline" size={48} color="#D1D5DB" />
-      <Text style={styles.emptyTitle}>Tidak ada tiket</Text>
-      <Text style={styles.emptySubtitle}>
-        {hasQuery
-          ? 'Tiket tidak ditemukan. Coba kata kunci lain.'
-          : 'Belum ada tiket aktif.'}
-      </Text>
-    </View>
-  )
-}
-
-function ListFooter() {
-  return (
-    <View style={styles.footer}>
-      <View style={styles.footerLine} />
-      <Text style={styles.footerText}>No More Tickets Left to Show</Text>
-      <View style={styles.footerLine} />
+      <Text style={styles.emptyTitle}>{title}</Text>
+      <Text style={styles.emptySubtitle}>{subtitle}</Text>
     </View>
   )
 }
@@ -293,94 +290,175 @@ function ListFooter() {
 // ─── Styles ────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#1A56C4' },
-  header: {
-    backgroundColor: '#1A56C4',
+  container: {
+    flex: 1,
+    backgroundColor: colors.brand,
+  },
+  appBar: {
+    backgroundColor: colors.brand,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-    paddingTop: 8,
+    paddingHorizontal: screenPadding,
+    paddingBottom: spacing.lg,
+    paddingTop: spacing.sm,
     gap: 14,
   },
   backBtn: {
-    width: 36, height: 36, borderRadius: 18,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: 'rgba(255,255,255,0.15)',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  headerTitle: { color: '#fff', fontSize: 20, fontWeight: '700', letterSpacing: 0.2 },
-  headerSubtitle: { color: 'rgba(255,255,255,0.7)', fontSize: 13, marginTop: 1 },
-
-  body: { flex: 1, backgroundColor: '#F3F4F6' },
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
-  errorText: { fontSize: 15, color: '#6B7280', fontWeight: '500' },
-  retryBtn: {
-    paddingHorizontal: 20, paddingVertical: 10,
-    backgroundColor: '#1A56C4', borderRadius: 8,
-  },
-  retryText: { color: '#fff', fontWeight: '600' },
-
-  listContent: { paddingHorizontal: 16, paddingTop: 8 },
-
-  statsCard: {
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    justifyContent: 'center',
   },
-  statItem: { flex: 1, alignItems: 'center' },
-  statsDivider: { width: 1, height: 40, backgroundColor: '#F3F4F6' },
-  statValue: { fontSize: 22, fontWeight: '700', marginBottom: 2 },
-  statLabel: { fontSize: 11, color: '#9CA3AF', fontWeight: '500' },
+  backBtnText: {
+    color: colors.textOnBrand,
+    fontSize: 18,
+    lineHeight: 22,
+  },
+  appBarTitle: {
+    color: colors.textOnBrand,
+    fontSize: typography.sizes.appBarTitle,
+    fontFamily: typography.fonts.bold,
+  },
+  appBarSubtitle: {
+    color: 'rgba(255,255,255,0.55)',
+    fontSize: typography.sizes.appBarSubtitle,
+    fontFamily: typography.fonts.regular,
+    marginTop: 2,
+  },
 
-  assignedSection: { marginBottom: 20, marginHorizontal: -16 },
-  assignedHeader: {
-    flexDirection: 'row', justifyContent: 'space-between',
-    alignItems: 'center', paddingHorizontal: 16, marginBottom: 12,
+  body: {
+    flex: 1,
+    backgroundColor: colors.bgBase,
   },
-  assignedHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  assignedDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#1A56C4' },
-  assignedTitle: { fontSize: 15, fontWeight: '700', color: '#111827' },
-  assignedCount: { fontSize: 12, color: '#9CA3AF', fontWeight: '500' },
-  assignedScroll: { paddingHorizontal: 16, gap: 12 },
-  assignedCard: {
-    width: 180, backgroundColor: '#fff', borderRadius: 14, overflow: 'hidden',
-    shadowColor: '#000', shadowOpacity: 0.07, shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 }, elevation: 3,
-  },
-  assignedCardAccent: { height: 4, width: '100%' },
-  assignedCardBody: { padding: 12, gap: 6 },
-  assignedCardTitle: { fontSize: 13, fontWeight: '700', color: '#111827', lineHeight: 18, marginTop: 4 },
-  assignedCardId: { fontSize: 11, color: '#9CA3AF', fontWeight: '500' },
-  assignedCardMeta: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  assignedCardMetaText: { fontSize: 11, color: '#6B7280', flex: 1 },
 
+  searchArea: {
+    
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.sm,
+  },
+
+  listContent: {
+    paddingHorizontal: screenPadding,
+  },
+
+  // Overview tiles
+  overviewGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginBottom: spacing.xl,
+  },
+  overviewTile: {
+    flex: 1,
+    borderRadius: radius.card,
+    padding: spacing.md,
+    minWidth: '45%',
+  },
+  overviewTileWide: {
+    width: '100%',
+    borderRadius: radius.card,
+    padding: spacing.md,
+  },
+  overviewNum: {
+    fontSize: 28,
+    fontFamily: typography.fonts.black,
+    color: colors.textOnBrand,
+    lineHeight: 32,
+  },
+  overviewLabel: {
+    fontSize: typography.sizes.microcopy,
+    fontFamily: typography.fonts.regular,
+    color: 'rgba(255,255,255,0.55)',
+    marginTop: 4,
+  },
+
+  sectionWrap: {
+    marginBottom: spacing.sm,
+  },
+  sectionLabel: {
+    fontSize: typography.sizes.sectionHeader,
+    fontFamily: typography.fonts.medium,
+    color: colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginBottom: spacing.sm,
+    marginTop: spacing.sm,
+  },
+
+  // Error / empty
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingHorizontal: screenPadding,
+  },
   emptyState: {
-    alignItems: 'center', justifyContent: 'center',
-    paddingTop: 60, paddingHorizontal: 32, gap: 8,
+    alignItems: 'center',
+    paddingTop: 60,
+    paddingHorizontal: 32,
+    gap: spacing.sm,
   },
-  emptyTitle: { fontSize: 16, fontWeight: '700', color: '#374151' },
-  emptySubtitle: { fontSize: 13, color: '#9CA3AF', textAlign: 'center', lineHeight: 20 },
-  footer: {
-    flexDirection: 'row', alignItems: 'center',
-    marginTop: 4, marginBottom: 8, gap: 10,
+  emptyTitle: {
+    fontSize: typography.sizes.cardTitle,
+    fontFamily: typography.fonts.bold,
+    color: colors.textSecondary,
   },
-  footerLine: { flex: 1, height: 1, backgroundColor: '#D1D5DB' },
-  footerText: { fontSize: 11, color: '#9CA3AF', fontWeight: '500' },
+  emptySubtitle: {
+    fontSize: typography.sizes.body,
+    fontFamily: typography.fonts.regular,
+    color: colors.textMuted,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  retryBtn: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    backgroundColor: colors.brand,
+    borderRadius: radius.button,
+  },
+  retryText: {
+    color: colors.textOnBrand,
+    fontFamily: typography.fonts.medium,
+    fontSize: typography.sizes.button,
+  },
 
+  // FAB
   fab: {
-    position: 'absolute', right: 20,
-    width: 54, height: 54, borderRadius: 27,
-    backgroundColor: '#1A56C4',
-    alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#1A56C4', shadowOpacity: 0.45,
-    shadowRadius: 12, shadowOffset: { width: 0, height: 4 },
-    elevation: 8,
+    position: 'absolute',
+    right: screenPadding,
+    width: 52,
+    height: 52,
+    borderRadius: radius.fab,
+    backgroundColor: colors.brand,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 0.5,
+    borderColor: colors.brandSubtle,
   },
+  fabIcon: {
+    color: colors.textOnBrand,
+    fontSize: 28,
+    lineHeight: 32,
+    fontFamily: typography.fonts.light,
+  },
+  listFooter: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: spacing.sm,
+  paddingVertical: spacing.xl,
+  paddingHorizontal: spacing.md,
+},
+listFooterLine: {
+  flex: 1,
+  height: 0.5,
+  backgroundColor: colors.borderDefault,
+},
+listFooterText: {
+  fontSize: typography.sizes.microcopy,
+  fontFamily: typography.fonts.regular,
+  color: colors.textMuted,
+},
 })

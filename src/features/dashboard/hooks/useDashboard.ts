@@ -39,19 +39,28 @@ const { data: tickets = [], isLoading, isError, refetch } = useQuery({
   // Matching sekarang pakai emplid, tapi perlu backend juga return assigned_staff_emplid
   // Sementara di-comment dulu bagian yang pakai user.name, ganti ke emplid
   const assignedTickets = useMemo(() => {
-    if (role !== 'Staff') return []
-    return tickets.filter((t: any) => {
-      if (!t.assigned_staff_emplid) return false
-      return t.assigned_staff_emplid === user?.emplid  // ✅ pakai emplid
-    })
-  }, [tickets, role, user?.emplid])
+  if (role !== 'Staff') return []
+  return tickets.filter((t: any) =>
+    t.assigned_staff_emplid === user?.emplid &&
+    (t.status_name === 'Open' || t.status_name === 'Pending Assignment')
+  )
+}, [tickets, role, user?.emplid])
+
+  const activeTickets = useMemo(() => {
+  if (role !== 'Staff') return []
+  return tickets.filter((t: any) =>
+    t.assigned_staff_emplid === user?.emplid &&
+    t.status_name === 'In Progress'
+  )
+}, [tickets, role, user?.emplid])
 
   const stats = useMemo(() => {
     if (role !== 'Staff') return null
     return {
       assigned: tickets.filter((t: any) =>
-        t.assigned_staff_emplid === user?.emplid
-      ).length,
+  t.assigned_staff_emplid === user?.emplid &&
+  (t.status_name === 'Open' || t.status_name === 'Pending Assignment')
+).length,
       active: tickets.filter((t: any) =>
         t.assigned_staff_emplid === user?.emplid &&
         t.status_name === 'In Progress'
@@ -86,6 +95,7 @@ const { data: tickets = [], isLoading, isError, refetch } = useQuery({
     activeFilter, setActiveFilter,
     filteredTickets,
     assignedTickets,
+    activeTickets,  
     stats,
     role,
     user,             // ✅ expose user langsung kalau komponen butuh emplid/email
