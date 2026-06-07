@@ -1,12 +1,18 @@
-import React from 'react'
+import React, { useState } from 'react'
 import {
   View,
   Text,
   FlatList,
+  ScrollView,    
   TouchableOpacity,
   StyleSheet,
   StatusBar,
+  TextInput,
+  Modal,
+  ActivityIndicator,
 } from 'react-native'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { claimTicket, rejectTicket } from '@/services/ticket.service'
 import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { SearchBar } from '@/components/ui/SearchBar'
@@ -18,6 +24,9 @@ import { useAuthStore } from '@/store/auth.store'
 import { colors, spacing, typography, radius, screenPadding } from '@/constants'
 
 export default function DashboardScreen() {
+  const [rejectModalVisible, setRejectModalVisible] = useState(false)
+const [rejectReason, setRejectReason] = useState('')
+const [selectedTicket, setSelectedTicket] = useState<any>(null)
   const clearAuth = useAuthStore((s) => s.clearAuth)
   const insets = useSafeAreaInsets()
   const router = useRouter()
@@ -49,18 +58,41 @@ export default function DashboardScreen() {
     router.replace('/(auth)/login')
   }
 
-  const handleAccept = (ticket: any) => {
-    // TODO: call accept mutation
-  }
-
-  const handleReject = (ticket: any) => {
-    // TODO: call reject mutation — show reason sheet
-  }
-
   const handleUpdateStatus = (ticket: any) => {
     router.push(`/(dashboard)/${ticket.id}?openSheet=true`)
   }
 
+  const queryClient = useQueryClient()
+
+const claimMutation = useMutation({
+  mutationFn: (ticketId: string) => claimTicket(ticketId),
+  onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tickets'] }),
+})
+
+const rejectMutation = useMutation({
+  mutationFn: ({ id, reason }: { id: string; reason: string }) => rejectTicket(id, reason),
+  onSuccess: () => {
+    setRejectModalVisible(false)
+    setRejectReason('')
+    setSelectedTicket(null)
+    queryClient.invalidateQueries({ queryKey: ['tickets'] })
+  },
+})
+
+const handleAccept = (ticket: any) => {
+  claimMutation.mutate(ticket.id)
+}
+
+const handleReject = (ticket: any) => {
+  setSelectedTicket(ticket)
+  setRejectReason('')
+  setRejectModalVisible(true)
+}
+
+const handleConfirmReject = () => {
+  if (!rejectReason.trim() || !selectedTicket) return
+  rejectMutation.mutate({ id: selectedTicket.id, reason: rejectReason })
+}
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <StatusBar barStyle="light-content" backgroundColor={colors.brand} />
@@ -102,69 +134,69 @@ export default function DashboardScreen() {
           </>
         ) : (
           <FlatList
-            data={isStaff ? activeTickets : filteredTickets}
-            keyExtractor={(item) => String(item.id)}
-            renderItem={({ item }) => (
-              <TicketCard
-                ticket={item}
-                onPress={handleTicketPress}
-                role={isStaff ? 'staff' : 'user'}
-                section={isStaff ? 'active' : 'user'}
-                onUpdateStatus={handleUpdateStatus}
-              />
-            )}
-            contentContainerStyle={[
-              styles.listContent,
-              { paddingBottom: insets.bottom + 100 },
-            ]}
-            showsVerticalScrollIndicator={false}
-            ListHeaderComponent={
-              <>
-                <View style={styles.searchArea}>
-                  <SearchBar
-                    value={searchQuery}
-                    onChangeText={setSearchQuery}
-                    placeholder="Search by ticket ID or issue..."
-                  />
-                  {!isStaff && (
-                    <FilterChips activeFilter={activeFilter} onFilterChange={setActiveFilter} />
-                  )}
-                </View>
+  data={isStaff ? assignedTickets : filteredTickets}  // ← was activeTickets
+  keyExtractor={(item) => String(item.id)}
+  renderItem={({ item }) => (
+    <TicketCard
+      ticket={item}
+      onPress={handleTicketPress}
+      role={isStaff ? 'staff' : 'user'}
+      section={isStaff ? 'assigned' : 'user'}          // ← was 'active'
+      onAccept={handleAccept}
+      onReject={handleReject}
+    />
+  )}
+  contentContainerStyle={[
+    styles.listContent,
+    { paddingBottom: insets.bottom + 100 },
+  ]}
+  showsVerticalScrollIndicator={false}
+  ListHeaderComponent={
+    <>
+      <View style={styles.searchArea}>
+        <SearchBar
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholder="Search by ticket ID or issue..."
+        />
+        {!isStaff && (
+          <FilterChips activeFilter={activeFilter} onFilterChange={setActiveFilter} />
+        )}
+      </View>
 
-                {isStaff && stats && (
-                  <StaffOverview stats={stats} />
-                )}
+      {isStaff && stats && (
+        <StaffOverview stats={stats} />
+      )}
 
-                {isStaff && assignedTickets.length > 0 && (
-                  <AssignedSection
-                    tickets={assignedTickets}
-                    onPress={handleTicketPress}
-                    onAccept={handleAccept}
-                    onReject={handleReject}
-                  />
-                )}
+      {/* Active Tickets — horizontal scroll, muncul dulu */}
+      {isStaff && (
+        <ActiveSection
+          tickets={activeTickets}
+          onPress={handleTicketPress}
+          onUpdateStatus={handleUpdateStatus}
+        />
+      )}
 
-                {isStaff && (
-                  <SectionLabel label="Active Tickets" />
-                )}
-              </>
-            }
-            ListEmptyComponent={
-              <EmptyState
-                hasQuery={!!searchQuery}
-                isStaff={isStaff}
-              />
-            }
-            ListFooterComponent={
-  filteredTickets.length > 0 ? (
-    <View style={styles.listFooter}>
-      <View style={styles.listFooterLine} />
-      <Text style={styles.listFooterText}>All tickets have been loaded</Text>
-      <View style={styles.listFooterLine} />
-    </View>
-  ) : null
-}
-          />
+      {/* New Tickets — label sebelum FlatList body */}
+      {isStaff && (
+        <SectionLabel label="New Tickets" />
+      )}
+    </>
+  }
+  ListEmptyComponent={
+    <EmptyState hasQuery={!!searchQuery} isStaff={isStaff} />
+  }
+  ListFooterComponent={
+    assignedTickets.length > 0 ? (
+      <View style={styles.listFooter}>
+        <View style={styles.listFooterLine} />
+        <Text style={styles.listFooterText}>All tickets have been loaded</Text>
+        <View style={styles.listFooterLine} />
+      </View>
+    ) : null
+  }
+/>
+      
         )}
       </View>
       
@@ -179,6 +211,52 @@ export default function DashboardScreen() {
           <Text style={styles.fabIcon}>+</Text>
         </TouchableOpacity>
       )}
+
+      {/* Reject Modal */}
+<Modal visible={rejectModalVisible} transparent animationType="fade">
+  <View style={styles.modalOverlay}>
+    <View style={styles.modalCard}>
+      <Text style={styles.modalTitle}>Reject this ticket?</Text>
+      <Text style={styles.modalSubtitle}>
+        Ticket #{selectedTicket?.id} · {selectedTicket?.shortDescription}
+      </Text>
+
+      <TextInput
+        style={styles.commentInput}
+        placeholder="Reason for rejection..."
+        placeholderTextColor={colors.textMuted}
+        value={rejectReason}
+        onChangeText={setRejectReason}
+        multiline
+        numberOfLines={3}
+        textAlignVertical="top"
+      />
+      {!rejectReason.trim() && rejectReason.length > 0 && (
+        <Text style={styles.commentRequired}>Reason is required</Text>
+      )}
+
+      <View style={styles.modalButtons}>
+        <TouchableOpacity
+          style={styles.modalSecondaryBtn}
+          onPress={() => setRejectModalVisible(false)}
+          disabled={rejectMutation.isPending}
+        >
+          <Text style={styles.modalSecondaryText}>Cancel</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.modalPrimaryBtn, { backgroundColor: '#DC2626', opacity: !rejectReason.trim() ? 0.4 : 1 }]}
+          onPress={handleConfirmReject}
+          disabled={!rejectReason.trim() || rejectMutation.isPending}
+        >
+          {rejectMutation.isPending
+            ? <ActivityIndicator color="#fff" size="small" />
+            : <Text style={styles.modalPrimaryText}>Reject</Text>
+          }
+        </TouchableOpacity>
+      </View>
+    </View>
+  </View>
+</Modal>
     </View>
   )
 }
@@ -212,6 +290,46 @@ function StaffOverview({
           Completed
         </Text>
       </View>
+    </View>
+  )
+}
+// ─── Active Section (horizontal scroll) ───────────────────
+
+function ActiveSection({
+  tickets,
+  onPress,
+  onUpdateStatus,
+}: {
+  tickets: any[]
+  onPress: (ticket: any) => void
+  onUpdateStatus: (ticket: any) => void
+}) {
+  return (
+    <View style={styles.sectionWrap}>
+      <SectionLabel label="Active Tickets" />
+      {tickets.length === 0 ? (
+        <View style={styles.activeEmpty}>
+          <Text style={styles.emptySubtitle}>No tickets currently in progress.</Text>
+        </View>
+      ) : (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.activeScrollContent}
+        >
+          {tickets.map((ticket) => (
+            <View key={ticket.id} style={styles.activeCardWrap}>
+              <TicketCard
+                ticket={ticket}
+                onPress={onPress}
+                role="staff"
+                section="active"
+                onUpdateStatus={onUpdateStatus}
+              />
+            </View>
+          ))}
+        </ScrollView>
+      )}
     </View>
   )
 }
@@ -461,4 +579,42 @@ listFooterText: {
   fontFamily: typography.fonts.regular,
   color: colors.textMuted,
 },
+activeScrollContent: {
+  paddingRight: screenPadding,
+  gap: spacing.sm,
+},
+activeCardWrap: {
+  width: 280,
+},
+activeEmpty: {
+  paddingVertical: spacing.md,
+  paddingHorizontal: spacing.sm,
+},
+modalOverlay: {
+  flex: 1,
+  backgroundColor: colors.bgOverlay,
+  justifyContent: 'center',         // ← center seperti pattern yang ada
+  alignItems: 'center',
+  paddingHorizontal: 32,
+},
+modalTitle: {
+  fontSize: typography.sizes.cardTitle,
+  fontFamily: typography.fonts.bold,
+  color: colors.textPrimary,
+},
+modalSubtitle: {
+  fontSize: typography.sizes.body,
+  fontFamily: typography.fonts.regular,
+  color: colors.textSecondary,
+  paddingTop: spacing.sm,
+  paddingBottom: spacing.sm,
+},
+commentRequired:    { fontSize: typography.sizes.microcopy, fontFamily: typography.fonts.regular, color: '#DC2626', marginBottom: spacing.md },
+  modalButtons:       { flexDirection: 'row', gap: spacing.md },
+  modalSecondaryBtn:  { flex: 1, borderWidth: 1.5, borderColor: colors.borderStrong, borderRadius: radius.button, paddingVertical: 13, alignItems: 'center' },
+  modalSecondaryText: { fontSize: typography.sizes.button, fontFamily: typography.fonts.medium, color: colors.textPrimary },
+  modalPrimaryBtn:    { flex: 1, borderRadius: radius.button, paddingVertical: 13, alignItems: 'center' },
+  modalPrimaryText:   { fontSize: typography.sizes.button, fontFamily: typography.fonts.medium, color: colors.textOnBrand },
+  modalCard:          { backgroundColor: colors.bgCard, borderRadius: radius.modal, padding: spacing.xl, width: '100%' },
+  commentInput:       { backgroundColor: colors.bgElevated, borderWidth: 1, borderColor: colors.borderDefault, borderRadius: radius.input, paddingHorizontal: spacing.lg, paddingVertical: spacing.md, fontSize: typography.sizes.body, fontFamily: typography.fonts.regular, color: colors.textPrimary, minHeight: 80, marginBottom: spacing.sm },
 })

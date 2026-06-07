@@ -8,10 +8,13 @@ import {
   resolveTicket,
   approveTicket,
   holdTicket,
-  addInfo,
+  continueTicket,
+  replyTicket,
 } from '@/services/ticket.service'
 import { useAuthStore } from '@/store/auth.store'
 import { Alert } from 'react-native'
+
+export type TicketAction = 'claim' | 'resolve' | 'approve' | 'hold' | 'continue' | 'reply'
 
 export const useTicketDetail = (id: string) => {
   const queryClient = useQueryClient()
@@ -21,7 +24,7 @@ export const useTicketDetail = (id: string) => {
 
   const [cancelModalVisible, setCancelModalVisible] = useState(false)
   const [actionModalVisible, setActionModalVisible] = useState(false)
-  const [pendingAction, setPendingAction] = useState<'claim' | 'resolve' | 'approve' | 'hold' | 'addInfo' | null>(null)
+  const [pendingAction, setPendingAction] = useState<TicketAction | null>(null)
   const [actionComment, setActionComment] = useState('')
   const [additionalDetailExpanded, setAdditionalDetailExpanded] = useState(false)
   const [attachmentsExpanded, setAttachmentsExpanded] = useState(false)
@@ -34,11 +37,12 @@ export const useTicketDetail = (id: string) => {
   console.log('raw ticket data:', JSON.stringify(query.data))
 
   const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: ['tickets'] })
-    queryClient.invalidateQueries({ queryKey: ['ticket', id] })
-  }
+  console.log('invalidating, id:', id, typeof id)
+  queryClient.invalidateQueries({ queryKey: ['tickets'] })
+  queryClient.invalidateQueries({ queryKey: ['ticket', id] })
+}
 
-  // ─── Cancel (User/Admin) ───────────────────────────────
+  // ─── Cancel (User) ────────────────────────────────────
   const cancelMutation = useMutation({
     mutationFn: () => cancelTicket(id),
     onSuccess: () => {
@@ -47,7 +51,7 @@ export const useTicketDetail = (id: string) => {
     },
   })
 
-  // ─── Claim (Staff) ─────────────────────────────────────
+  // ─── Claim (Staff) ────────────────────────────────────
   const claimMutation = useMutation({
     mutationFn: (comment?: string) => claimTicket(id, comment),
     onSuccess: () => {
@@ -56,121 +60,175 @@ export const useTicketDetail = (id: string) => {
       invalidate()
     },
     onError: (error: any) => {
-    console.log('claim error:', error?.response?.data)
+      console.log('claim error:', error?.response?.data)
+      Alert.alert('Gagal', error?.response?.data?.message ?? 'Terjadi kesalahan')
+    },
+  })
+
+  // ─── Resolve (Staff) — comment wajib ──────────────────
+  const resolveMutation = useMutation({
+    mutationFn: (comment: string) => resolveTicket(id, comment),
+    onSuccess: () => {
+      setActionModalVisible(false)
+      setActionComment('')
+      invalidate()
+    },
+    onError: (error: any) => {
+      console.log('resolve error:', error?.response?.data)
+      Alert.alert('Gagal', error?.response?.data?.message ?? 'Terjadi kesalahan')
+    },
+  })
+
+  // ─── Approve (Admin) ──────────────────────────────────
+ const approveMutation = useMutation({
+  mutationFn: (comment?: string) => approveTicket(id, comment),
+  onSuccess: (data) => {
+    console.log('approve success:', data)
+    setActionModalVisible(false)
+    setActionComment('')
+    invalidate()
+  },
+  onError: (error: any) => {
+    console.log('approve error:', error?.response?.data)
     Alert.alert('Gagal', error?.response?.data?.message ?? 'Terjadi kesalahan')
   },
-  })
-
-  // ─── Resolve (Staff) ───────────────────────────────────
-  const resolveMutation = useMutation({
-    mutationFn: (comment?: string) => resolveTicket(id, comment),
-    onSuccess: () => {
-      setActionModalVisible(false)
-      setActionComment('')
-      invalidate()
-    },
-  })
-
-  // ─── Approve (Admin) ───────────────────────────────────
-  const approveMutation = useMutation({
-    mutationFn: (comment?: string) => approveTicket(id, comment),
-    onSuccess: () => {
-      setActionModalVisible(false)
-      setActionComment('')
-      invalidate()
-    },
-  })
-
-  // ─── Add Info (User/Staff saat On Hold) ───────────────────
-const addInfoMutation = useMutation({
-  mutationFn: (comment: string) => addInfo(id, comment),
-  onSuccess: () => {
-    setActionModalVisible(false)
-    setActionComment('')
-    invalidate()
-  },
 })
-
-  // ─── Hold (Staff) ───────────────────────────────────
+  // ─── Hold (Staff — assigned only) ────────────────────
   const holdMutation = useMutation({
-  mutationFn: (comment?: string) => holdTicket(id, comment),
-  onSuccess: () => {
-    setActionModalVisible(false)
+    mutationFn: (comment?: string) => holdTicket(id, comment),
+    onSuccess: () => {
+      setActionModalVisible(false)
+      setActionComment('')
+      invalidate()
+    },
+    onError: (error: any) => {
+      console.log('hold error:', error?.response?.data)
+      Alert.alert('Gagal', error?.response?.data?.message ?? 'Terjadi kesalahan')
+    },
+  })
+
+  // ─── Continue (Staff — resume dari On Hold) ───────────
+  const continueMutation = useMutation({
+    mutationFn: (comment: string) => continueTicket(id, comment),
+    onSuccess: () => {
+      setActionModalVisible(false)
+      setActionComment('')
+      invalidate()
+    },
+    onError: (error: any) => {
+      console.log('continue error:', error?.response?.data)
+      Alert.alert('Gagal', error?.response?.data?.message ?? 'Terjadi kesalahan')
+    },
+  })
+
+  // ─── Reply (User — Information ticket) ───────────────
+  const replyMutation = useMutation({
+    mutationFn: (comment: string) => replyTicket(id, comment),
+    onSuccess: () => {
+      setActionModalVisible(false)
+      setActionComment('')
+      invalidate()
+    },
+    onError: (error: any) => {
+      console.log('reply error:', error?.response?.data)
+      Alert.alert('Gagal', error?.response?.data?.message ?? 'Terjadi kesalahan')
+    },
+  })
+
+  // ─── Trigger dengan guard ─────────────────────────────
+  const triggerAction = (action: TicketAction) => {
+    if (action === 'claim' && role === 'Staff' && dept !== ticketDept) {
+      Alert.alert(
+        'Tidak dapat mengklaim tiket',
+        `Tiket ini untuk departemen ${ticketDept}, bukan ${dept}.`
+      )
+      return
+    }
+    setPendingAction(action)
     setActionComment('')
-    invalidate()
-  },
-})
-
- // ─── Trigger dengan dept guard ─────────────────────────
-const triggerAction = (action: 'claim' | 'resolve' | 'approve' | 'hold' | 'addInfo') => {
-  if (action === 'claim' && role === 'Staff' && dept !== ticketDept) {
-    Alert.alert(
-      'Tidak dapat mengklaim tiket',
-      `Tiket ini untuk departemen ${ticketDept}, bukan ${dept}.`
-    )
-    return
+    setActionModalVisible(true)
   }
-  setPendingAction(action)
-  setActionComment('')
-  setActionModalVisible(true)
-}
 
-  // update confirmAction
-const confirmAction = () => {
-  if (pendingAction === 'claim') claimMutation.mutate(actionComment || undefined)
-  else if (pendingAction === 'resolve') resolveMutation.mutate(actionComment || undefined)
-  else if (pendingAction === 'approve') approveMutation.mutate(actionComment || undefined)
-  else if (pendingAction === 'hold') holdMutation.mutate(actionComment || undefined)
-  else if (pendingAction === 'addInfo') addInfoMutation.mutate(actionComment)
-}
+  // ─── Confirm action ───────────────────────────────────
+  const confirmAction = () => {
+      console.log('confirmAction called, pendingAction:', pendingAction, 'comment:', actionComment)
 
-  // ─── Visibility logic ──────────────────────────────────
-const status = query.data?.status_name ?? query.data?.status
-console.log('DEBUG status:', status, '| role:', role)
-const assignedStaffEmplid =
-  query.data?.assignedStaff?.emplid ??  // dari getTicketById mapping
-  query.data?.assigned_staff_id ??       // ✅ fallback langsung ke raw field backend
-  null
+    if (pendingAction === 'claim')    claimMutation.mutate(actionComment || undefined)
+    else if (pendingAction === 'resolve')  resolveMutation.mutate(actionComment)
+    else if (pendingAction === 'approve')  approveMutation.mutate(actionComment || undefined)
+    else if (pendingAction === 'hold')     holdMutation.mutate(actionComment || undefined)
+    else if (pendingAction === 'continue') continueMutation.mutate(actionComment)
+    else if (pendingAction === 'reply')    replyMutation.mutate(actionComment)
+  }
 
-const ticketDept = query.data?.scope_department ?? null  // ✅ pakai field yang ada di response
+  // ─── Derived state ────────────────────────────────────
+  const status = query.data?.status_name ?? query.data?.status
+  console.log('DEBUG status:', status, '| role:', role)
 
-const canClaim =
+  const assignedStaffEmplid =
+    query.data?.assignedStaff?.emplid ??
+    query.data?.assigned_staff_id ??
+    null
+
+  const ticketDept = query.data?.scope_department ?? null
+  const categoryName = query.data?.category_name ?? null
+  const isInformationTicket = categoryName === 'Information'
+
+  // ─── Visibility logic ─────────────────────────────────
+
+  // Staff: claim tiket yang belum ada assigned staff
+  const canClaim =
   role === 'Staff' &&
-  !!dept &&           // ← tambah ini
+  !!dept &&
   !assignedStaffEmplid &&
   dept === ticketDept &&
-  status === 'Pending Assignment'
+  status === 'Approved'  // ← was 'Pending Assignment'
 
-const canResolve =
-  role === 'Staff' &&
-  assignedStaffEmplid === user?.emplid &&
-  ['In Progress', 'On Hold'].includes(status ?? '')
+  // Staff: resolve — hanya assigned staff, status In Progress atau On Hold
+  const canResolve =
+    role === 'Staff' &&
+    assignedStaffEmplid === user?.emplid &&
+    ['In Progress', 'On Hold'].includes(status ?? '')
 
-const canApprove =
-  role === 'Admin' &&
-  status === 'Pending'
+  // Admin: approve tiket Pending
+  const canApprove =
+    role === 'Admin' &&
+    status === 'Pending' &&
+    !isInformationTicket
 
-   const canCancel =
-  role === 'User' &&
-  !['Resolved', 'Cancelled', 'Rejected'].includes(status ?? '')
+  // User: cancel — semua status kecuali terminal
+  const canCancel =
+    role === 'User' &&
+    !['Resolved', 'Cancelled', 'Rejected'].includes(status ?? '')
 
-  const canAddInfo =
-  status === 'On Hold' &&
-  (
-    (role === 'User' && query.data?.ticket_owner_id === user?.emplid) ||
-    (role === 'Staff' && assignedStaffEmplid === user?.emplid)
-  )
-
-const isActioning =
-  claimMutation.isPending || resolveMutation.isPending ||
-  approveMutation.isPending || holdMutation.isPending ||
-  addInfoMutation.isPending   // ← tambah
-
+  // Staff: hold — hanya assigned staff, status In Progress
   const canHold =
-  role === 'Staff' &&
-  assignedStaffEmplid === user?.emplid &&
-  status === 'In Progress'
-  
+    role === 'Staff' &&
+    assignedStaffEmplid === user?.emplid &&
+    status === 'In Progress'
+
+  // Staff: continue — hanya assigned staff, status On Hold
+  const canContinue =
+    role === 'Staff' &&
+    assignedStaffEmplid === user?.emplid &&
+    status === 'On Hold'
+
+  // User: reply — hanya owner tiket Information yang statusnya In Progress
+  // (admin sudah ask, sekarang giliran user reply)
+  const canReply =
+    role === 'User' &&
+    isInformationTicket &&
+    query.data?.ticket_owner_id === user?.emplid &&
+    status === 'In Progress'
+
+  const isActioning =
+    claimMutation.isPending ||
+    resolveMutation.isPending ||
+    approveMutation.isPending ||
+    holdMutation.isPending ||
+    continueMutation.isPending ||
+    replyMutation.isPending
+
   return {
     ticket: query.data,
     isLoading: query.isLoading,
@@ -189,6 +247,9 @@ const isActioning =
     canClaim,
     canResolve,
     canApprove,
+    canHold,
+    canContinue,
+    canReply,
     actionModalVisible,
     setActionModalVisible,
     pendingAction,
@@ -197,9 +258,6 @@ const isActioning =
     triggerAction,
     confirmAction,
     isActioning,
-    canHold,
-    canAddInfo,
-    
 
     // UI state
     additionalDetailExpanded,

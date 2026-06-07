@@ -25,7 +25,7 @@ export const getAllTickets = async (params?: {
 
   const { data } = await api.get('/tickets', { params })
   console.log('raw response:', JSON.stringify(data, null, 2))
-  console.log('role dari store:', useAuthStore.getState().user?.role) // ✅ rolename → role
+  console.log('role dari store:', useAuthStore.getState().user?.role)
   console.log('jumlah ticket:', data.data.length)
   console.log('raw ticket[0]:', JSON.stringify(data.data[0]))
 
@@ -45,16 +45,19 @@ export const getAllTickets = async (params?: {
 // ─── GET TICKET BY ID ──────────────────────────────────────
 
 const ACTION_LABEL: Record<string, string> = {
-  CREATE_TICKET:   'Tiket Dibuat',
-  APPROVE_TICKET:  'Tiket Disetujui',
-  ASSIGN_STAFF:    'Staff Ditugaskan',
-  CLAIM_TICKET:    'Tiket Diklaim',
-  HOLD_TICKET:     'Tiket Di-hold',
-  ADD_INFORMATION: 'Informasi Ditambahkan',
-  RESOLVE_TICKET:  'Tiket Diselesaikan',
-  CANCEL_TICKET:   'Tiket Dibatalkan',
-  REJECT_TICKET:   'Tiket Ditolak',
-  UPDATE_TICKET:   'Tiket Diperbarui',
+  CREATE_TICKET:    'Tiket Dibuat',
+  APPROVE_TICKET:   'Tiket Disetujui',
+  ASSIGN_STAFF:     'Staff Ditugaskan',
+  CLAIM_TICKET:     'Tiket Diklaim',
+  HOLD_TICKET:      'Tiket Di-hold',
+  CONTINUE_TICKET:  'Penanganan Dilanjutkan',
+  ASK_TICKET:       'Pertanyaan dari Admin',
+  REPLY_TICKET:     'Balasan dari Pelapor',
+  RESOLVE_TICKET:   'Tiket Diselesaikan',
+  CANCEL_TICKET:    'Tiket Dibatalkan',
+  REJECT_TICKET:    'Tiket Ditolak',
+  UPDATE_TICKET:    'Tiket Diperbarui',
+  SCHEDULE_TICKET:  'Jadwal Ditetapkan',
 }
 
 export const getTicketById = async (id: string) => {
@@ -68,15 +71,14 @@ export const getTicketById = async (id: string) => {
   const { data } = await api.get(`/tickets/${id}`)
   const t = data.data
 
-  // Ambil semua attachments dari semua history entry, flatten jadi satu array
-const attachments = (t.history ?? []).flatMap((h: any, histIndex: number) =>
-  (h.attachments ?? []).map((att: any, attIndex: number) => ({
-    id: histIndex * 100 + attIndex,
-    historyId: h.id,
-    fileName: att.file_name,
-    filePath: att.file_path,
-  }))
-)
+  const attachments = (t.history ?? []).flatMap((h: any, histIndex: number) =>
+    (h.attachments ?? []).map((att: any, attIndex: number) => ({
+      id: histIndex * 100 + attIndex,
+      historyId: h.id,
+      fileName: att.file_name,
+      filePath: att.file_path,
+    }))
+  )
 
   // Timeline — balik dari DESC ke ASC, entry terbaru = active
   const chronological = [...(t.history ?? [])].reverse()
@@ -135,23 +137,23 @@ export const createTicket = async (payload: {
   try {
     const form = new FormData()
 
-  form.append('issue_type_id', String(payload.issue_type_id))
-  form.append('place_id', String(payload.place_id))
-  form.append('short_description', payload.short_description)
-  form.append('description', payload.description)
-  form.append('priority', payload.priority)
+    form.append('issue_type_id', String(payload.issue_type_id))
+    form.append('place_id', String(payload.place_id))
+    form.append('short_description', payload.short_description)
+    form.append('description', payload.description)
+    form.append('priority', payload.priority)
 
-  payload.attachmentUris?.forEach((uri, index) => {
-    const filename = uri.split('/').pop() ?? `photo_${index}.jpg`
-    const ext = filename.split('.').pop()?.toLowerCase() ?? 'jpg'
-    const mimeType = ext === 'png' ? 'image/png' : 'image/jpeg'
-    form.append('attachments', {
-      uri,
-      name: filename,
-      type: mimeType,
-    } as any)
-  })
-  console.log('sending to:', api.defaults.baseURL + '/tickets')
+    payload.attachmentUris?.forEach((uri, index) => {
+      const filename = uri.split('/').pop() ?? `photo_${index}.jpg`
+      const ext = filename.split('.').pop()?.toLowerCase() ?? 'jpg'
+      const mimeType = ext === 'png' ? 'image/png' : 'image/jpeg'
+      form.append('attachments', {
+        uri,
+        name: filename,
+        type: mimeType,
+      } as any)
+    })
+    console.log('sending to:', api.defaults.baseURL + '/tickets')
     const { data } = await api.post('/tickets', form, {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
@@ -189,7 +191,7 @@ export const claimTicket = async (id: string, comment?: string) => {
 
 // ─── RESOLVE TICKET (Staff) ────────────────────────────────
 
-export const resolveTicket = async (id: string, comment?: string) => {
+export const resolveTicket = async (id: string, comment: string) => {
   if (config.USE_MOCK) {
     await delay(800)
     return
@@ -207,8 +209,15 @@ export const approveTicket = async (id: string, comment?: string) => {
     return
   }
 
-  const { data } = await api.post(`/tickets/${id}/approve`, { comment })
-  return data
+  try {
+    const { data } = await api.post(`/tickets/${id}/approve`, { comment })
+    console.log('approveTicket response:', data)
+    return data
+  } catch (error: any) {
+    console.log('approveTicket error status:', error?.response?.status)
+    console.log('approveTicket error data:', JSON.stringify(error?.response?.data))
+    throw error
+  }
 }
 
 // ─── REJECT TICKET (Admin) ────────────────────────────────
@@ -219,16 +228,26 @@ export const rejectTicket = async (id: string, reason: string) => {
   return data
 }
 
-// ─── HOLD TICKET (Staff) ────────────────────────────────
+// ─── HOLD TICKET (Staff) ──────────────────────────────────
+
 export const holdTicket = async (id: string, comment?: string) => {
   if (config.USE_MOCK) { await delay(800); return }
   const { data } = await api.post(`/tickets/${id}/hold`, { comment })
   return data
 }
 
-// ─── ADDITIONAL NOTE (Staff) ────────────────────────────────
-export const addInfo = async (id: string, comment: string) => {
+// ─── CONTINUE TICKET (Staff — resume dari On Hold atau Information) ───
+
+export const continueTicket = async (id: string, comment: string) => {
   if (config.USE_MOCK) { await delay(800); return }
-  const { data } = await api.post(`/tickets/${id}/addInfo`, { comment })
+  const { data } = await api.post(`/tickets/${id}/continue`, { comment })
+  return data
+}
+
+// ─── REPLY TICKET (User — reply ke ask dari admin, Information ticket) ───
+
+export const replyTicket = async (id: string, comment: string) => {
+  if (config.USE_MOCK) { await delay(800); return }
+  const { data } = await api.post(`/tickets/${id}/reply`, { comment })
   return data
 }

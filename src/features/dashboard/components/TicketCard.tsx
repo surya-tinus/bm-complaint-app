@@ -112,6 +112,8 @@ export function TicketCard({
   const iconName       = CATEGORY_ICON[categoryKey]
   const priorityConfig = colors.priority[priorityRaw] ?? colors.priority.medium
 
+  {console.log('StatusBadge value:', ticket.status, ticket.status_name)}
+
   return (
     <TouchableOpacity
       style={styles.card}
@@ -142,6 +144,7 @@ export function TicketCard({
           <Text style={styles.ticketId}>#{ticket.id}</Text>
           <Text style={styles.title} numberOfLines={1}>{shortDesc}</Text>
         </View>
+        
         <StatusBadge status={statusRaw} role={role} />
       </View>
 

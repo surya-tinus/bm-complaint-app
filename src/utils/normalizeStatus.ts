@@ -10,6 +10,7 @@ const STATUS_MAP: Record<string, StatusKey> = {
   unresolved:  'unresolved',
   cancelled:   'cancelled',
   rejected:    'rejected',
+  approved:    'approved', 
   // PascalCase / display string dari backend
   Open:        'open',
   Pending:     'pending',
@@ -19,6 +20,7 @@ const STATUS_MAP: Record<string, StatusKey> = {
   Unresolved:  'unresolved',
   Cancelled:   'cancelled',
   Rejected:    'rejected',
+  Approved:    'approved',
 }
 
 export function normalizeStatus(raw: string): StatusKey {

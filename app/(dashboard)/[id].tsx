@@ -14,15 +14,17 @@ import { fetchAuthenticatedImage } from '@/utils/imageCache'
 import { TicketDetailSkeleton, SkeletonBox } from '@/components/ui/Skeleton'
 import { colors, spacing, typography, radius, screenPadding } from '@/constants'
 import { PinchGestureHandler, PanGestureHandler, State } from 'react-native-gesture-handler'
+import type { TicketAction } from '@/features/dashboard/hooks/useTicketDetail'
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
 
-const ACTION_CONFIG = {
-  claim:   { label: 'Claim Ticket',    color: colors.brand   },
-  resolve: { label: 'Resolve Ticket',  color: '#10B981'      },
-  approve: { label: 'Approve Ticket',  color: '#F59E0B'      },
-  hold:    { label: 'Hold Ticket',     color: '#F59E0B'      },
-  addInfo: { label: 'Add Information', color: '#8B5CF6'      },
+const ACTION_CONFIG: Record<TicketAction, { label: string; color: string }> = {
+  claim:    { label: 'Claim Ticket',        color: colors.brand   },
+  resolve:  { label: 'Resolve Ticket',      color: '#10B981'      },
+  approve:  { label: 'Approve Ticket',      color: '#F59E0B'      },
+  hold:     { label: 'Hold Ticket',         color: '#F59E0B'      },
+  continue: { label: 'Continue Handling',   color: colors.brand   },
+  reply:    { label: 'Reply to Admin',      color: '#8B5CF6'      },
 }
 
 export default function TicketDetailScreen() {
@@ -35,13 +37,13 @@ export default function TicketDetailScreen() {
     additionalDetailExpanded, setAdditionalDetailExpanded,
     attachmentsExpanded, setAttachmentsExpanded,
     handleCancel, isCancelling, canCancel,
-    canClaim, canResolve, canApprove, canHold, canAddInfo,
+    canClaim, canResolve, canApprove, canHold, canContinue, canReply,
     actionModalVisible, setActionModalVisible,
     pendingAction, actionComment, setActionComment,
     triggerAction, confirmAction, isActioning,
   } = useTicketDetail(id)
 
-  const hasActionBar = canCancel || canClaim || canResolve || canApprove || canHold || canAddInfo
+  const hasActionBar = canCancel || canClaim || canResolve || canApprove || canHold || canContinue || canReply
 
   if (isLoading) {
     return (
@@ -66,6 +68,7 @@ export default function TicketDetailScreen() {
     )
   }
 
+  console.log('rendering bottom bar, canApprove:', canApprove, 'canCancel:', canCancel)
   return (
     <View style={styles.safeArea}>
       <StatusBar barStyle="light-content" backgroundColor={colors.brand} />
@@ -88,6 +91,7 @@ export default function TicketDetailScreen() {
 
       {hasActionBar && (
         <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12 }]}>
+        
           {canCancel && (
             <View style={styles.cancelBarWrap}>
               <TouchableOpacity style={styles.cancelBtn} onPress={() => setCancelModalVisible(true)} activeOpacity={0.85}>
@@ -97,11 +101,12 @@ export default function TicketDetailScreen() {
           )}
           {!canCancel && (
             <View style={styles.staffActionRow}>
-              {canHold    && <TouchableOpacity style={styles.btnOutline}  onPress={() => triggerAction('hold')}    activeOpacity={0.85}><Text style={styles.btnOutlineText}>Hold</Text></TouchableOpacity>}
-              {canClaim   && <TouchableOpacity style={styles.btnPrimary}  onPress={() => triggerAction('claim')}   activeOpacity={0.85}><Text style={styles.btnPrimaryText}>Accept</Text></TouchableOpacity>}
-              {canResolve && <TouchableOpacity style={styles.btnPrimary}  onPress={() => triggerAction('resolve')} activeOpacity={0.85}><Text style={styles.btnPrimaryText}>Resolve</Text></TouchableOpacity>}
-              {canApprove && <TouchableOpacity style={styles.btnPrimary}  onPress={() => triggerAction('approve')} activeOpacity={0.85}><Text style={styles.btnPrimaryText}>Approve</Text></TouchableOpacity>}
-              {canAddInfo && <TouchableOpacity style={styles.btnOutline}  onPress={() => triggerAction('addInfo')} activeOpacity={0.85}><Text style={styles.btnOutlineText}>Add Info</Text></TouchableOpacity>}
+              {canHold     && <TouchableOpacity style={styles.btnOutline}  onPress={() => triggerAction('hold')}     activeOpacity={0.85}><Text style={styles.btnOutlineText}>Hold</Text></TouchableOpacity>}
+              {canContinue && <TouchableOpacity style={styles.btnPrimary}  onPress={() => triggerAction('continue')} activeOpacity={0.85}><Text style={styles.btnPrimaryText}>Continue</Text></TouchableOpacity>}
+              {canClaim    && <TouchableOpacity style={styles.btnPrimary}  onPress={() => triggerAction('claim')}    activeOpacity={0.85}><Text style={styles.btnPrimaryText}>Accept</Text></TouchableOpacity>}
+              {canResolve  && <TouchableOpacity style={styles.btnPrimary}  onPress={() => triggerAction('resolve')}  activeOpacity={0.85}><Text style={styles.btnPrimaryText}>Resolve</Text></TouchableOpacity>}
+              {canApprove  && <TouchableOpacity style={styles.btnPrimary}  onPress={() => triggerAction('approve')}  activeOpacity={0.85}><Text style={styles.btnPrimaryText}>Approve</Text></TouchableOpacity>}
+              {canReply    && <TouchableOpacity style={styles.btnOutline}  onPress={() => triggerAction('reply')}    activeOpacity={0.85}><Text style={styles.btnOutlineText}>Reply</Text></TouchableOpacity>}
             </View>
           )}
         </View>
@@ -109,13 +114,20 @@ export default function TicketDetailScreen() {
 
       <CancelModal visible={cancelModalVisible} onKeep={() => setCancelModalVisible(false)} onCancel={handleCancel} isLoading={isCancelling} />
       {pendingAction && (
-        <ActionModal visible={actionModalVisible} action={pendingAction} comment={actionComment}
-          onChangeComment={setActionComment} onCancel={() => setActionModalVisible(false)}
-          onConfirm={confirmAction} isLoading={isActioning} />
+        <ActionModal
+          visible={actionModalVisible}
+          action={pendingAction}
+          comment={actionComment}
+          onChangeComment={setActionComment}
+          onCancel={() => setActionModalVisible(false)}
+          onConfirm={confirmAction}
+          isLoading={isActioning}
+        />
       )}
     </View>
   )
 }
+
 
 // ─── Authenticated Image ───────────────────────────────────
 
@@ -398,39 +410,56 @@ function CancelModal({ visible, onKeep, onCancel, isLoading }: { visible: boolea
 
 // ─── Action Modal ──────────────────────────────────────────
 
+// Aksi yang wajib isi comment sebelum bisa submit
+const REQUIRES_COMMENT: Record<TicketAction, boolean> = {
+  claim:    false,
+  resolve:  true,   // mandatory — backend enforce ini
+  approve:  false,
+  hold:     false,
+  continue: true,   // mandatory — backend enforce ini
+  reply:    true,   // ini inti dari aksi reply, wajib ada isi
+}
+
+const ACTION_SUBTITLE: Record<TicketAction, string> = {
+  claim:    'This ticket will be assigned to you.',
+  resolve:  'Make sure the issue is fully resolved before confirming.',
+  approve:  'The ticket will be approved and forwarded to staff.',
+  hold:     'Ticket handling will be paused temporarily.',
+  continue: 'Ticket will be moved back to active status.',
+  reply:    'Your reply will be sent to the admin handling this ticket.',
+}
+
+const ACTION_PLACEHOLDER: Record<TicketAction, string> = {
+  claim:    'Add a note (optional)',
+  resolve:  'e.g. Light bulb replaced, working normally',
+  approve:  'Add a note (optional)',
+  hold:     'e.g. Waiting for spare parts from storage',
+  continue: 'e.g. Parts arrived, ready to continue',
+  reply:    'e.g. The issue started after the last maintenance',
+}
+
 function ActionModal({ visible, action, comment, onChangeComment, onCancel, onConfirm, isLoading }: {
-  visible: boolean; action: 'claim' | 'resolve' | 'approve' | 'hold' | 'addInfo'
-  comment: string; onChangeComment: (t: string) => void; onCancel: () => void; onConfirm: () => void; isLoading: boolean
+  visible: boolean
+  action: TicketAction
+  comment: string
+  onChangeComment: (t: string) => void
+  onCancel: () => void
+  onConfirm: () => void
+  isLoading: boolean
 }) {
   const cfg = ACTION_CONFIG[action]
-  const requiresComment = action === 'hold' || action === 'addInfo'
+  const requiresComment = REQUIRES_COMMENT[action]
   const canSubmit = !requiresComment || comment.trim().length > 0
-
-  const SUBTITLE: Record<typeof action, string> = {
-    claim:   'This ticket will be assigned to you.',
-    resolve: 'Make sure the issue is fully resolved before confirming.',
-    approve: 'The ticket will be approved and forwarded to staff.',
-    hold:    'Ticket handling will be paused temporarily.',
-    addInfo: 'Add information to continue handling this ticket.',
-  }
-
-  const PLACEHOLDER: Record<typeof action, string> = {
-    claim:   'Add a note (optional)',
-    resolve: 'e.g. Light bulb replaced, working normally',
-    approve: 'Add a note (optional)',
-    hold:    'e.g. Waiting for spare parts from storage',
-    addInfo: 'e.g. Additional tools needed before proceeding',
-  }
 
   return (
     <Modal visible={visible} transparent animationType="fade">
       <View style={styles.modalOverlay}>
         <View style={styles.modalCard}>
           <Text style={styles.modalTitle}>{cfg.label}?</Text>
-          <Text style={styles.modalSubtitle}>{SUBTITLE[action]}</Text>
+          <Text style={styles.modalSubtitle}>{ACTION_SUBTITLE[action]}</Text>
           <TextInput
             style={styles.commentInput}
-            placeholder={PLACEHOLDER[action]}
+            placeholder={ACTION_PLACEHOLDER[action]}
             placeholderTextColor={colors.textMuted}
             value={comment}
             onChangeText={onChangeComment}
@@ -438,11 +467,18 @@ function ActionModal({ visible, action, comment, onChangeComment, onCancel, onCo
             textAlignVertical="top"
             maxLength={300}
           />
+          {requiresComment && comment.trim().length === 0 && (
+            <Text style={styles.commentRequired}>Comment is required for this action.</Text>
+          )}
           <View style={styles.modalButtons}>
             <TouchableOpacity style={styles.modalSecondaryBtn} onPress={onCancel} disabled={isLoading}>
               <Text style={styles.modalSecondaryText}>Cancel</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.modalPrimaryBtn, { backgroundColor: canSubmit ? cfg.color : colors.textMuted }]} onPress={onConfirm} disabled={isLoading || !canSubmit}>
+            <TouchableOpacity
+              style={[styles.modalPrimaryBtn, { backgroundColor: canSubmit ? cfg.color : colors.textMuted }]}
+              onPress={onConfirm}
+              disabled={isLoading || !canSubmit}
+            >
               {isLoading ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.modalPrimaryText}>Confirm</Text>}
             </TouchableOpacity>
           </View>
@@ -554,7 +590,8 @@ const styles = StyleSheet.create({
   modalCard:          { backgroundColor: colors.bgCard, borderRadius: radius.modal, padding: spacing.xl, width: '100%' },
   modalTitle:         { fontSize: 18, fontFamily: typography.fonts.bold, color: colors.textPrimary, marginBottom: spacing.sm },
   modalSubtitle:      { fontSize: typography.sizes.body, fontFamily: typography.fonts.regular, color: colors.textSecondary, lineHeight: 20, marginBottom: spacing.lg },
-  commentInput:       { backgroundColor: colors.bgElevated, borderWidth: 1, borderColor: colors.borderDefault, borderRadius: radius.input, paddingHorizontal: spacing.lg, paddingVertical: spacing.md, fontSize: typography.sizes.body, fontFamily: typography.fonts.regular, color: colors.textPrimary, minHeight: 80, marginBottom: spacing.lg },
+  commentInput:       { backgroundColor: colors.bgElevated, borderWidth: 1, borderColor: colors.borderDefault, borderRadius: radius.input, paddingHorizontal: spacing.lg, paddingVertical: spacing.md, fontSize: typography.sizes.body, fontFamily: typography.fonts.regular, color: colors.textPrimary, minHeight: 80, marginBottom: spacing.sm },
+  commentRequired:    { fontSize: typography.sizes.microcopy, fontFamily: typography.fonts.regular, color: '#DC2626', marginBottom: spacing.md },
   modalButtons:       { flexDirection: 'row', gap: spacing.md },
   modalSecondaryBtn:  { flex: 1, borderWidth: 1.5, borderColor: colors.borderStrong, borderRadius: radius.button, paddingVertical: 13, alignItems: 'center' },
   modalSecondaryText: { fontSize: typography.sizes.button, fontFamily: typography.fonts.medium, color: colors.textPrimary },

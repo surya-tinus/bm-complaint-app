@@ -13,6 +13,7 @@ const STATUS_LABEL: Record<StatusKey, { user: string; staff: string }> = {
   unresolved:  { user: 'Unresolved',  staff: 'Unresolved'  },
   cancelled:   { user: 'Cancelled',   staff: 'Cancelled'   },
   rejected:    { user: 'Revision',    staff: 'Rejected'    },
+  approved:    { user: 'Approved',    staff: 'Approved'    },
 }
 
 interface Props {

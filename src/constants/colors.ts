@@ -26,6 +26,7 @@ export const colors = {
   status: {
     open:        { bg: '#F3F4F6', text: '#6B7280',  accent: null       },
     pending:     { bg: '#F3F4F6', text: '#6B7280',  accent: null       },
+     approved:    { bg: '#EEF2FF', text: '#4338CA',  accent: '#6366F1'  },
     in_progress: { bg: '#DBEAFE', text: '#1D4ED8',  accent: '#1f52d0'  },
     on_hold:     { bg: '#FEF3C7', text: '#B45309',  accent: '#F59E0B'  },
     resolved:    { bg: '#D1FAE5', text: '#065F46',  accent: '#10B981'  },
