@@ -48,8 +48,12 @@ export const getPlaces = async (): Promise<Place[]> => {
       building: p.building,
     }))
   } catch (error: any) {
-    console.log('places ERROR:', error.response?.status, error.response?.data)
-    console.log('full URL attempted:', error.config?.url)
+    if (error.response) {
+      console.log('places ERROR (HTTP):', error.response.status, error.response.data)
+    } else {
+      console.log('places ERROR (Network):', error.message, error.code)
+    }
+    console.log('full URL attempted:', (error.config?.baseURL ?? '') + (error.config?.url ?? ''))
     return []
   }
 }
@@ -72,9 +76,12 @@ export const getIssueTypes = async (): Promise<IssueTypeWithScope[]> => {
       }
     })
   } catch (error: any) {
-    console.log('issue-types ERROR:', error.response?.status, error.response?.data)
-    console.log('full URL attempted:', error.config?.url)
-    console.log('baseURL:', error.config?.baseURL)
+    if (error.response) {
+      console.log('issue-types ERROR (HTTP):', error.response.status, error.response.data)
+    } else {
+      console.log('issue-types ERROR (Network):', error.message, error.code)
+    }
+    console.log('full URL attempted:', (error.config?.baseURL ?? '') + (error.config?.url ?? ''))
     return []
   }
 }

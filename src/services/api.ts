@@ -1,22 +1,39 @@
-//src/services/api.ts
+// src/services/api.ts
 import axios from 'axios'
 import { config } from '@/constants/config'
 import { useAuthStore } from '@/store/auth.store'
 
 export const api = axios.create({
-  baseURL: config.API_BASE_URL  + '/api',
+  baseURL: config.API_BASE_URL + '/api',
   headers: {
     'Content-Type': 'application/json',
   },
   timeout: 10000,
 })
 
-// Request interceptor — untuk attach auth token nanti
+// Request interceptor — attach auth token
+api.interceptors.request.use(
+  (reqConfig) => {
+    const token = useAuthStore.getState().token
+    if (token) {
+      reqConfig.headers.Authorization = `Bearer ${token}`
+    }
+    return reqConfig
+  },
+  (error) => Promise.reject(error)
+)
+
+// Response interceptor — handle error global (SATU saja)
 api.interceptors.response.use(
   (res) => res,
   (error) => {
-    if (error.response?.status === 401) {
-      // Kalau request pakai internal token — jangan redirect, token expired/invalid
+    // Network error / timeout — tidak ada response sama sekali
+    if (!error.response) {
+      console.error('[API] Network error or timeout:', error.message ?? error.code)
+      return Promise.reject(error)
+    }
+
+    if (error.response.status === 401) {
       const isInternalToken = !!error.config?.headers?.['x-internal-token']
       if (isInternalToken) {
         return Promise.reject({
@@ -26,22 +43,10 @@ api.interceptors.response.use(
         })
       }
 
-      // SSO token expired — redirect ke login
       useAuthStore.getState().clearAuth()
-      // router tidak tersedia di sini, jadi set flag di store
       useAuthStore.getState().setSessionExpired(true)
     }
-    return Promise.reject(error)
-  }
-)
 
-// Response interceptor — untuk handle error global
-api.interceptors.response.use(
-  (res) => res,
-  (error) => {
-    if (error.response?.status === 401) {
-      // TODO: handle token expired / redirect ke login
-    }
     return Promise.reject(error)
   }
 )

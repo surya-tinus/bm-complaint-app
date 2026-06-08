@@ -1,6 +1,12 @@
 // src/services/auth.service.ts
 import { config } from '@/constants/config'
-import { useAuthStore } from '@/store/auth.store'
+import { useAuthStore, UserDept } from '@/store/auth.store'
+import { api } from './api'
+
+export const getUserMe = async (): Promise<{ department: string | null }> => {
+  const { data } = await api.get('/users/me')
+  return data
+}
 
 // ─── Dev tokens (hapus saat SSO sudah siap) ───────────────
 
@@ -24,14 +30,21 @@ export const login = async (payload: { email: string; password: string }): Promi
     const token = DEV_TOKENS[payload.email]
     if (!token) throw new Error('Email tidak dikenali')
     useAuthStore.getState().setAuthFromToken(token)
-    return
+    return  // ← mock skip fetch /me, dept tetap dari emplid
   }
 
-  // Dev mode: pakai hardcoded token berdasarkan email
-  // TODO: ganti dengan SSO flow saat siap
   const token = DEV_TOKENS[payload.email]
   if (!token) throw new Error('Email tidak dikenali untuk development')
   useAuthStore.getState().setAuthFromToken(token)
+
+  // Fetch dept dari backend dan update store
+  try {
+    const me = await getUserMe()
+    useAuthStore.getState().setDept((me.department as UserDept) ?? null)
+  } catch {
+    // Fallback ke dept dari emplid kalau /me gagal
+    console.warn('Failed to fetch /me, using emplid-derived dept')
+  }
 }
 
 // ─── Logout ────────────────────────────────────────────────

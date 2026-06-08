@@ -53,21 +53,12 @@ console.log('raw ticket[0]:', JSON.stringify(tickets[0], null, 2))
   // ⚠️ user.name tidak ada di auth store baru — hanya ada emplid & email
   // Matching sekarang pakai emplid, tapi perlu backend juga return assigned_staff_emplid
   // Sementara di-comment dulu bagian yang pakai user.name, ganti ke emplid
-const ISSUE_TYPE_DEPT_MAP: Record<string, string> = {
-  'Electrical Problem': 'ME',
-  'Facility Issue': 'BM',
-  'Facility Request': 'BM',
-  'Moving Service': 'BM',
-  'Cleaning Issue': 'CS',
-  'Cleaning': 'CS',
-  'Security Issue': 'SEC',
-}
 
 const assignedTickets = useMemo(() => {
   if (role !== 'Staff') return []
   return tickets.filter((t: any) =>
     t.status_name === 'Approved' &&
-    ISSUE_TYPE_DEPT_MAP[t.issue_type_name] === dept
+    t.scope_department === dept
   )
 }, [tickets, role, dept])
 
@@ -75,16 +66,16 @@ const activeTickets = useMemo(() => {
   if (role !== 'Staff') return []
   return tickets.filter((t: any) =>
     t.status_name === 'In Progress' &&
-    ISSUE_TYPE_DEPT_MAP[t.issue_type_name] === dept
+    t.scope_department === dept
   )
 }, [tickets, role, dept])
 
 const stats = useMemo(() => {
   if (role !== 'Staff') return null
   return {
-    assigned: tickets.filter((t: any) => t.status_name === 'Approved' && ISSUE_TYPE_DEPT_MAP[t.issue_type_name] === dept).length,
-    active: tickets.filter((t: any) => t.status_name === 'In Progress' && ISSUE_TYPE_DEPT_MAP[t.issue_type_name] === dept).length,
-    completed: tickets.filter((t: any) => t.status_name === 'Resolved' && ISSUE_TYPE_DEPT_MAP[t.issue_type_name] === dept).length,
+    assigned: tickets.filter((t: any) => t.status_name === 'Approved' && t.scope_department === dept).length,
+    active: tickets.filter((t: any) => t.status_name === 'In Progress' && t.scope_department === dept).length,
+    completed: tickets.filter((t: any) => t.status_name === 'Resolved' && t.scope_department === dept).length,
   }
 }, [tickets, role, dept])
 

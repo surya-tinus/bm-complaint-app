@@ -5,7 +5,7 @@ import { queryClient } from 'app/_layout'
 // ─── Types ─────────────────────────────────────────────────
 
 export type UserRole = 'User' | 'Admin' | 'Staff'
-export type UserDept = 'BM' | 'ME' | null
+export type UserDept = 'BM' | 'ME' | 'CS' | 'SEC' | null
 
 export interface AuthUser {
   emplid: string
@@ -22,6 +22,7 @@ interface AuthState {
   clearAuth: () => void
   sessionExpired: boolean
   setSessionExpired: (val: boolean) => void
+  setDept: (dept: UserDept) => void
 }
 
 // ─── JWT Decode (tanpa library) ────────────────────────────
@@ -68,6 +69,9 @@ export const useAuthStore = create<AuthState>((set) => ({
   isAuthenticated: false,
   sessionExpired: false,
   setSessionExpired: (val) => set({ sessionExpired: val }),
+  setDept: (dept) => set((state) => ({
+    user: state.user ? { ...state.user, dept } : null,
+  })),
 
   setAuthFromToken: (token: string) => {
     const payload = decodeJWT(token)
