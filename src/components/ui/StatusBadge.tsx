@@ -1,3 +1,4 @@
+// src/components/ui/StatusBadge.tsx
 import React from 'react'
 import { View, Text, StyleSheet } from 'react-native'
 import { colors, typography, radius } from '@/constants'
@@ -14,6 +15,7 @@ const STATUS_LABEL: Record<StatusKey, { user: string; staff: string }> = {
   cancelled:   { user: 'Cancelled',   staff: 'Cancelled'   },
   rejected:    { user: 'Revision',    staff: 'Rejected'    },
   approved:    { user: 'Approved',    staff: 'Approved'    },
+  auto_closed: { user: 'Closed', staff: 'Auto Closed' },
 }
 
 interface Props {

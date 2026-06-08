@@ -1,3 +1,4 @@
+// src/utils/normalizeStatus.ts
 import type { StatusKey } from '@/constants'
 
 const STATUS_MAP: Record<string, StatusKey> = {
@@ -11,6 +12,7 @@ const STATUS_MAP: Record<string, StatusKey> = {
   cancelled:   'cancelled',
   rejected:    'rejected',
   approved:    'approved', 
+  auto_closed:   'auto_closed',
   // PascalCase / display string dari backend
   Open:        'open',
   Pending:     'pending',
@@ -21,6 +23,8 @@ const STATUS_MAP: Record<string, StatusKey> = {
   Cancelled:   'cancelled',
   Rejected:    'rejected',
   Approved:    'approved',
+  'AUTO CLOSED': 'auto_closed',
+  'Auto Closed': 'auto_closed', 
 }
 
 export function normalizeStatus(raw: string): StatusKey {

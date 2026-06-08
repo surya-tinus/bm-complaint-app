@@ -1,3 +1,4 @@
+// src/constants/colors.ts
 export const colors = {
   // Background
   bgBase:     '#F3F4F6',
@@ -33,6 +34,7 @@ export const colors = {
     unresolved:  { bg: '#FEE2E2', text: '#991B1B',  accent: '#EF4444'  },
     cancelled:   { bg: '#FEE2E2', text: '#991B1B',  accent: null       },
     rejected:    { bg: '#FEE2E2', text: '#991B1B',  accent: '#EF4444'  },
+    auto_closed: { bg: '#F3F4F6', text: '#6B7280', accent: null },
   },
 
   // Priority
