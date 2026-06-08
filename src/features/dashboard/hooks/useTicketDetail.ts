@@ -16,7 +16,8 @@ import { Alert } from 'react-native'
 
 export type TicketAction = 'claim' | 'resolve' | 'approve' | 'hold' | 'continue' | 'reply'
 
-export const useTicketDetail = (id: string) => {
+export const useTicketDetail = (id: string, externalToken?: string) => {
+
   const queryClient = useQueryClient()
   const user = useAuthStore((s) => s.user)
   const role = user?.role
@@ -30,8 +31,8 @@ export const useTicketDetail = (id: string) => {
   const [attachmentsExpanded, setAttachmentsExpanded] = useState(false)
 
   const query = useQuery({
-    queryKey: ['ticket', id],
-    queryFn: () => getTicketById(id),
+    queryKey: ['ticket', id, externalToken],  // ← include token di key
+    queryFn: () => getTicketById(id, externalToken),
     enabled: !!id,
   })
   console.log('raw ticket data:', JSON.stringify(query.data))
@@ -53,7 +54,7 @@ export const useTicketDetail = (id: string) => {
 
   // ─── Claim (Staff) ────────────────────────────────────
   const claimMutation = useMutation({
-    mutationFn: (comment?: string) => claimTicket(id, comment),
+    mutationFn: (comment?: string) => claimTicket(id, comment, externalToken),
     onSuccess: () => {
       setActionModalVisible(false)
       setActionComment('')
@@ -177,12 +178,13 @@ export const useTicketDetail = (id: string) => {
   // ─── Visibility logic ─────────────────────────────────
 
   // Staff: claim tiket yang belum ada assigned staff
-  const canClaim =
-  role === 'Staff' &&
-  !!dept &&
-  !assignedStaffEmplid &&
-  dept === ticketDept &&
-  status === 'Approved'  // ← was 'Pending Assignment'
+  const canClaim = externalToken
+    ? status === 'Approved' && !assignedStaffEmplid   // ← external staff via link
+    : role === 'Staff' &&
+      !!dept &&
+      !assignedStaffEmplid &&
+      dept === ticketDept &&
+      status === 'Approved'
 
   // Staff: resolve — hanya assigned staff, status In Progress atau On Hold
   const canResolve =

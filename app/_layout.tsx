@@ -1,6 +1,7 @@
+//app/_layout.tsx
 import { useEffect } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { Stack } from 'expo-router'
+import { Stack, useRouter } from 'expo-router'
 import { useNotificationSetup } from '@/features/notifications/hooks/useNotifications'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import {
@@ -12,6 +13,7 @@ import {
   Rubik_900Black,
 } from '@expo-google-fonts/rubik'
 import * as SplashScreen from 'expo-splash-screen'
+import { useAuthStore } from '@/store/auth.store'
 
 SplashScreen.preventAutoHideAsync()
 
@@ -19,6 +21,17 @@ export const queryClient = new QueryClient()
 
 function AppWithNotifications() {
   useNotificationSetup()
+  const router = useRouter()
+  const sessionExpired = useAuthStore((s) => s.sessionExpired)
+  const setSessionExpired = useAuthStore((s) => s.setSessionExpired)
+
+  useEffect(() => {
+    if (sessionExpired) {
+      setSessionExpired(false)
+      router.replace('/(auth)/login')
+    }
+  }, [sessionExpired])
+
   return <Stack screenOptions={{ headerShown: false }} />
 }
 

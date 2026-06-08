@@ -60,7 +60,7 @@ const ACTION_LABEL: Record<string, string> = {
   SCHEDULE_TICKET:  'Jadwal Ditetapkan',
 }
 
-export const getTicketById = async (id: string) => {
+export const getTicketById = async (id: string, internalToken?: string) => {
   if (config.USE_MOCK) {
     await delay(500)
     const ticket = MOCK_TICKET_DETAILS[id]
@@ -68,7 +68,9 @@ export const getTicketById = async (id: string) => {
     return ticket
   }
 
-  const { data } = await api.get(`/tickets/${id}`)
+  const { data } = await api.get(`/tickets/${id}`, {
+    headers: internalToken ? { 'x-internal-token': internalToken } : {},
+  })
   const t = data.data
 
   const attachments = (t.history ?? []).flatMap((h: any, histIndex: number) =>
@@ -179,13 +181,12 @@ export const cancelTicket = async (id: string) => {
 
 // ─── CLAIM TICKET (Staff) ──────────────────────────────────
 
-export const claimTicket = async (id: string, comment?: string) => {
-  if (config.USE_MOCK) {
-    await delay(800)
-    return
-  }
+export const claimTicket = async (id: string, comment?: string, internalToken?: string) => {
+  if (config.USE_MOCK) { await delay(800); return }
 
-  const { data } = await api.post(`/tickets/${id}/claim`, { comment })
+  const { data } = await api.post(`/tickets/${id}/claim`, { comment }, {
+    headers: internalToken ? { 'x-internal-token': internalToken } : {},
+  })
   return data
 }
 

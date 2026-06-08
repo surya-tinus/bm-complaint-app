@@ -1,3 +1,4 @@
+// app/[dashboard]/[id].tsx
 import React, { useEffect, useRef, useState } from 'react'
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, StatusBar,
@@ -28,9 +29,9 @@ const ACTION_CONFIG: Record<TicketAction, { label: string; color: string }> = {
 }
 
 export default function TicketDetailScreen() {
+  const { id, t: externalToken } = useLocalSearchParams<{ id: string; t?: string }>()
   const insets = useSafeAreaInsets()
   const router = useRouter()
-  const { id } = useLocalSearchParams<{ id: string }>()
   const {
     ticket, isLoading, isError, role,
     cancelModalVisible, setCancelModalVisible,
@@ -41,7 +42,7 @@ export default function TicketDetailScreen() {
     actionModalVisible, setActionModalVisible,
     pendingAction, actionComment, setActionComment,
     triggerAction, confirmAction, isActioning,
-  } = useTicketDetail(id)
+  } = useTicketDetail(id, externalToken ?? undefined)
 
   const hasActionBar = canCancel || canClaim || canResolve || canApprove || canHold || canContinue || canReply
 
@@ -55,6 +56,21 @@ export default function TicketDetailScreen() {
       </View>
     )
   }
+
+  // Kalau pakai external token dan fetch gagal dengan 401
+if (isError && externalToken) {
+  return (
+    <View style={styles.safeArea}>
+      <Header id={id} onBack={() => router.back()} topInset={insets.top} />
+      <View style={styles.centered}>
+        <Text style={styles.errorTitle}>Link no longer valid</Text>
+        <Text style={styles.errorSubtitle}>
+          This ticket has already been claimed or the link has expired.
+        </Text>
+      </View>
+    </View>
+  )
+}
 
   if (isError || !ticket) {
     return (

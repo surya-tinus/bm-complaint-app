@@ -20,6 +20,8 @@ interface AuthState {
   isAuthenticated: boolean
   setAuthFromToken: (token: string) => void
   clearAuth: () => void
+  sessionExpired: boolean
+  setSessionExpired: (val: boolean) => void
 }
 
 // ─── JWT Decode (tanpa library) ────────────────────────────
@@ -64,6 +66,8 @@ export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   token: null,
   isAuthenticated: false,
+  sessionExpired: false,
+  setSessionExpired: (val) => set({ sessionExpired: val }),
 
   setAuthFromToken: (token: string) => {
     const payload = decodeJWT(token)
@@ -80,7 +84,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   clearAuth: () => {
-  queryClient.clear()  // ← hapus semua cache React Query
-  set({ user: null, token: null, isAuthenticated: false })
-},
+    queryClient.clear()
+    set({ user: null, token: null, isAuthenticated: false, sessionExpired: false })
+  },
 }))
