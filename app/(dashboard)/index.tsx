@@ -114,6 +114,15 @@ const handleConfirmReject = () => {
             {isStaff ? 'Summary of today\'s activity' : 'Track your ticket status here'}
           </Text>
         </View>
+        {isStaff && (
+    <TouchableOpacity
+      style={styles.backBtn}
+      onPress={() => router.push('/(dashboard)/history')}
+      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+    >
+      <Text style={styles.backBtnText}>🕐</Text>
+    </TouchableOpacity>
+  )}
       </View>
 
       {/* Body */}
