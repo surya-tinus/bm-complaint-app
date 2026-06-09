@@ -26,18 +26,17 @@ export function useDashboard() {
   const [searchQuery, setSearchQuery] = useState('')
   const [activeFilter, setActiveFilter] = useState<FilterLabel>('All')
 
-const { data: tickets = [], isLoading, isError, refetch } = useQuery({
-  
-  queryKey: ['tickets', user?.emplid],
+const { data: tickets = [], isLoading, isError, error, refetch } = useQuery({
+  queryKey: ['tickets', user?.emplid, user?.dept],
   queryFn: () => {
-    console.log('fetching tickets...')  // ← cek apakah refetch terpanggil
+    console.log('fetching tickets...')
     return getAllTickets()
   },
   staleTime: 1000 * 60 * 2,
   enabled: !!user?.emplid,
-
-  
 })
+
+console.log('isError:', isError, 'error:', error)  // ← tambah ini
 
 console.log('=== DASHBOARD DEBUG ===')
 console.log('role:', role)
@@ -97,6 +96,9 @@ const stats = useMemo(() => {
     })
   }, [tickets, activeFilter, searchQuery])
 
+  console.log('dept from store:', dept)
+console.log('assignedTickets count:', assignedTickets.length)
+console.log('activeTickets count:', activeTickets.length)
   return {
     searchQuery, setSearchQuery,
     activeFilter, setActiveFilter,

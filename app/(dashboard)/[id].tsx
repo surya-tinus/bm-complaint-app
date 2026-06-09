@@ -25,7 +25,7 @@ const ACTION_CONFIG: Record<TicketAction, { label: string; color: string }> = {
   approve:  { label: 'Approve Ticket',      color: '#F59E0B'      },
   hold:     { label: 'Hold Ticket',         color: '#F59E0B'      },
   continue: { label: 'Continue Handling',   color: colors.brand   },
-  reply:    { label: 'Reply to Admin',      color: '#8B5CF6'      },
+  comment:  { label: 'Add Comment',       color: colors.brand },
 }
 
 export default function TicketDetailScreen() {
@@ -38,13 +38,13 @@ export default function TicketDetailScreen() {
     additionalDetailExpanded, setAdditionalDetailExpanded,
     attachmentsExpanded, setAttachmentsExpanded,
     handleCancel, isCancelling, canCancel,
-    canClaim, canResolve, canApprove, canHold, canContinue, canReply,
+    canClaim, canResolve, canApprove, canHold, canContinue, canComment,
     actionModalVisible, setActionModalVisible,
     pendingAction, actionComment, setActionComment,
     triggerAction, confirmAction, isActioning,
   } = useTicketDetail(id, externalToken ?? undefined)
 
-  const hasActionBar = canCancel || canClaim || canResolve || canApprove || canHold || canContinue || canReply
+  const hasActionBar = canCancel || canClaim || canResolve || canApprove || canHold || canContinue || canComment
 
   if (isLoading) {
     return (
@@ -57,20 +57,19 @@ export default function TicketDetailScreen() {
     )
   }
 
-  // Kalau pakai external token dan fetch gagal dengan 401
-if (isError && externalToken) {
-  return (
-    <View style={styles.safeArea}>
-      <Header id={id} onBack={() => router.back()} topInset={insets.top} />
-      <View style={styles.centered}>
-        <Text style={styles.errorTitle}>Link no longer valid</Text>
-        <Text style={styles.errorSubtitle}>
-          This ticket has already been claimed or the link has expired.
-        </Text>
+  if (isError && externalToken) {
+    return (
+      <View style={styles.safeArea}>
+        <Header id={id} onBack={() => router.back()} topInset={insets.top} />
+        <View style={styles.centered}>
+          <Text style={styles.errorTitle}>Link no longer valid</Text>
+          <Text style={styles.errorSubtitle}>
+            This ticket has already been claimed or the link has expired.
+          </Text>
+        </View>
       </View>
-    </View>
-  )
-}
+    )
+  }
 
   if (isError || !ticket) {
     return (
@@ -105,28 +104,55 @@ if (isError && externalToken) {
         <AssignedStaffCard ticket={ticket} />
       </ScrollView>
 
-      {hasActionBar && (
-        <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12 }]}>
-        
-          {canCancel && (
-            <View style={styles.cancelBarWrap}>
-              <TouchableOpacity style={styles.cancelBtn} onPress={() => setCancelModalVisible(true)} activeOpacity={0.85}>
-                <Text style={styles.cancelBtnText}>Cancel Report</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-          {!canCancel && (
-            <View style={styles.staffActionRow}>
-              {canHold     && <TouchableOpacity style={styles.btnOutline}  onPress={() => triggerAction('hold')}     activeOpacity={0.85}><Text style={styles.btnOutlineText}>Hold</Text></TouchableOpacity>}
-              {canContinue && <TouchableOpacity style={styles.btnPrimary}  onPress={() => triggerAction('continue')} activeOpacity={0.85}><Text style={styles.btnPrimaryText}>Continue</Text></TouchableOpacity>}
-              {canClaim    && <TouchableOpacity style={styles.btnPrimary}  onPress={() => triggerAction('claim')}    activeOpacity={0.85}><Text style={styles.btnPrimaryText}>Accept</Text></TouchableOpacity>}
-              {canResolve  && <TouchableOpacity style={styles.btnPrimary}  onPress={() => triggerAction('resolve')}  activeOpacity={0.85}><Text style={styles.btnPrimaryText}>Resolve</Text></TouchableOpacity>}
-              {canApprove  && <TouchableOpacity style={styles.btnPrimary}  onPress={() => triggerAction('approve')}  activeOpacity={0.85}><Text style={styles.btnPrimaryText}>Approve</Text></TouchableOpacity>}
-              {canReply    && <TouchableOpacity style={styles.btnOutline}  onPress={() => triggerAction('reply')}    activeOpacity={0.85}><Text style={styles.btnOutlineText}>Reply</Text></TouchableOpacity>}
-            </View>
-          )}
-        </View>
-      )}
+     {hasActionBar && (
+  <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12 }]}>
+    
+    {/* Row 1: Staff actions — Hold, Continue, Claim, Resolve */}
+    {(canHold || canContinue || canClaim || canResolve) && (
+      <View style={[styles.staffActionRow, { marginBottom: spacing.sm }]}>
+        {canHold     && <TouchableOpacity style={styles.btnOutline}  onPress={() => triggerAction('hold')}     activeOpacity={0.85}><Text style={styles.btnOutlineText}>Hold</Text></TouchableOpacity>}
+        {canContinue && <TouchableOpacity style={styles.btnPrimary}  onPress={() => triggerAction('continue')} activeOpacity={0.85}><Text style={styles.btnPrimaryText}>Continue</Text></TouchableOpacity>}
+        {canClaim    && <TouchableOpacity style={styles.btnPrimary}  onPress={() => triggerAction('claim')}    activeOpacity={0.85}><Text style={styles.btnPrimaryText}>Accept</Text></TouchableOpacity>}
+        {canResolve  && <TouchableOpacity style={styles.btnPrimary}  onPress={() => triggerAction('resolve')}  activeOpacity={0.85}><Text style={styles.btnPrimaryText}>Resolve</Text></TouchableOpacity>}
+      </View>
+    )}
+
+    {/* Row 2: Approve */}
+    {canApprove && (
+      <View style={[styles.staffActionRow, { marginBottom: spacing.sm }]}>
+        <TouchableOpacity style={styles.btnPrimary} onPress={() => triggerAction('approve')} activeOpacity={0.85}>
+          <Text style={styles.btnPrimaryText}>Approve</Text>
+        </TouchableOpacity>
+      </View>
+    )}
+
+    {/* Row 3: Cancel + Comment */}
+    {(canCancel || canComment) && (
+      <View style={styles.staffActionRow}>
+        {canCancel && (
+          <TouchableOpacity
+            style={[styles.btnPrimary, { backgroundColor: '#DC2626', flex: canComment ? 2 : 1 }]}
+            onPress={() => setCancelModalVisible(true)}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.btnPrimaryText}>Cancel Report</Text>
+          </TouchableOpacity>
+        )}
+        {canComment && (
+          <TouchableOpacity
+            style={[styles.btnOutline, { flex: 1 }]}
+            onPress={() => triggerAction('comment')}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.btnOutlineText}>Comment</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    )}
+
+  </View>
+)}
+
 
       <CancelModal visible={cancelModalVisible} onKeep={() => setCancelModalVisible(false)} onCancel={handleCancel} isLoading={isCancelling} />
       {pendingAction && (
@@ -426,14 +452,13 @@ function CancelModal({ visible, onKeep, onCancel, isLoading }: { visible: boolea
 
 // ─── Action Modal ──────────────────────────────────────────
 
-// Aksi yang wajib isi comment sebelum bisa submit
 const REQUIRES_COMMENT: Record<TicketAction, boolean> = {
   claim:    false,
-  resolve:  true,   // mandatory — backend enforce ini
+  resolve:  true,
   approve:  false,
   hold:     false,
-  continue: true,   // mandatory — backend enforce ini
-  reply:    true,   // ini inti dari aksi reply, wajib ada isi
+  continue: true,
+  comment: true,
 }
 
 const ACTION_SUBTITLE: Record<TicketAction, string> = {
@@ -442,7 +467,7 @@ const ACTION_SUBTITLE: Record<TicketAction, string> = {
   approve:  'The ticket will be approved and forwarded to staff.',
   hold:     'Ticket handling will be paused temporarily.',
   continue: 'Ticket will be moved back to active status.',
-  reply:    'Your reply will be sent to the admin handling this ticket.',
+  comment: 'Your comment will be added to the ticket timeline.',
 }
 
 const ACTION_PLACEHOLDER: Record<TicketAction, string> = {
@@ -451,7 +476,7 @@ const ACTION_PLACEHOLDER: Record<TicketAction, string> = {
   approve:  'Add a note (optional)',
   hold:     'e.g. Waiting for spare parts from storage',
   continue: 'e.g. Parts arrived, ready to continue',
-  reply:    'e.g. The issue started after the last maintenance',
+  comment: 'e.g. Additional info, question, or follow-up',
 }
 
 function ActionModal({ visible, action, comment, onChangeComment, onCancel, onConfirm, isLoading }: {

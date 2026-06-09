@@ -23,23 +23,28 @@ export const getAllTickets = async (params?: {
     return MOCK_TICKETS
   }
 
-  const { data } = await api.get('/tickets', { params })
-  console.log('raw response:', JSON.stringify(data, null, 2))
-  console.log('role dari store:', useAuthStore.getState().user?.role)
-  console.log('jumlah ticket:', data.data.length)
-  console.log('raw ticket[0]:', JSON.stringify(data.data[0]))
+  try {
+    const { data } = await api.get('/tickets', { params })
+    console.log('raw response:', JSON.stringify(data, null, 2))
+    console.log('role dari store:', useAuthStore.getState().user?.role)
+    console.log('jumlah ticket:', data.data.length)
+    console.log('raw ticket[0]:', JSON.stringify(data.data[0]))
 
-  return data.data.map((t: any) => ({
-    ...t,
-    id: String(t.id),
-    shortDescription: t.short_description,
-    reportedAt: new Date(t.created_at).toLocaleDateString('id-ID'),
-    status: t.status_name,
-    issueType: { name: t.issue_type_name },
-    place: { building: t.building, name: t.place_name },
-    priority: t.priority as PriorityLevel,
-    staffEmplid: t.staff_emplid ?? null,
-  }))
+    return data.data.map((t: any) => ({
+      ...t,
+      id: String(t.id),
+      shortDescription: t.short_description,
+      reportedAt: new Date(t.created_at).toLocaleDateString('id-ID'),
+      status: t.status_name,
+      issueType: { name: t.issue_type_name },
+      place: { building: t.building, name: t.place_name },
+      priority: t.priority as PriorityLevel,
+      staffEmplid: t.staff_emplid ?? null,
+    }))
+  } catch (err: any) {
+    console.log('getAllTickets ERROR:', err?.response?.status, err?.response?.data, err?.message)
+    throw err
+  }
 }
 
 // ─── GET TICKET BY ID ──────────────────────────────────────
@@ -51,8 +56,7 @@ const ACTION_LABEL: Record<string, string> = {
   CLAIM_TICKET:     'Tiket Diklaim',
   HOLD_TICKET:      'Tiket Di-hold',
   CONTINUE_TICKET:  'Penanganan Dilanjutkan',
-  ASK_TICKET:       'Pertanyaan dari Admin',
-  REPLY_TICKET:     'Balasan dari Pelapor',
+  COMMENT: 'Comment Added',
   RESOLVE_TICKET:   'Tiket Diselesaikan',
   CANCEL_TICKET:    'Tiket Dibatalkan',
   REJECT_TICKET:    'Tiket Ditolak',
@@ -98,7 +102,12 @@ export const getTicketById = async (id: string, internalToken?: string) => {
   }))
 
   // Staff notes — ambil dari history yang punya comment, terbaru
-  const historyWithComment = t.history?.find((h: any) => h.comment !== null)
+  const STAFF_ACTION_CODES = ['CLAIM_TICKET', 'HOLD_TICKET', 'CONTINUE', 'RESOLVE_TICKET', 'REPLY_TICKET', 'ASSIGN_STAFF']
+
+const historyWithComment = t.history?.find((h: any) => 
+  h.comment !== null && 
+  STAFF_ACTION_CODES.includes(h.action_name)
+)
 
   return {
     ...t,
@@ -237,7 +246,7 @@ export const holdTicket = async (id: string, comment?: string) => {
   return data
 }
 
-// ─── CONTINUE TICKET (Staff — resume dari On Hold atau Information) ───
+// ─── CONTINUE TICKET (Staff — resume dari On Hold) ────────
 
 export const continueTicket = async (id: string, comment: string) => {
   if (config.USE_MOCK) { await delay(800); return }
@@ -245,10 +254,8 @@ export const continueTicket = async (id: string, comment: string) => {
   return data
 }
 
-// ─── REPLY TICKET (User — reply ke ask dari admin, Information ticket) ───
-
-export const replyTicket = async (id: string, comment: string) => {
+export const commentTicket = async (id: string, comment: string) => {
   if (config.USE_MOCK) { await delay(800); return }
-  const { data } = await api.post(`/tickets/${id}/reply`, { comment })
+  const { data } = await api.post(`/tickets/${id}/comment`, { comment })
   return data
 }
