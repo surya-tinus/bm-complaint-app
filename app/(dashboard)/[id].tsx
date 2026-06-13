@@ -16,6 +16,9 @@ import { TicketDetailSkeleton, SkeletonBox } from '@/components/ui/Skeleton'
 import { colors, spacing, typography, radius, screenPadding } from '@/constants'
 import { PinchGestureHandler, PanGestureHandler, State } from 'react-native-gesture-handler'
 import type { TicketAction } from '@/features/dashboard/hooks/useTicketDetail'
+import { TicketTypeIcon } from '@/components/ui/TicketTypeIcon'
+import { resolveCategoryKey } from '@/utils/resolveCategoryKey'
+import { CATEGORY_TO_TYPE } from '@/constants'
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
 
@@ -253,6 +256,8 @@ function Header({ id, onBack, topInset }: { id: string; onBack: () => void; topI
 function TicketInfoCard({ ticket, additionalDetailExpanded, onToggleAdditionalDetail, attachmentsExpanded, onToggleAttachments }: {
   ticket: TicketDetail; additionalDetailExpanded: boolean; onToggleAdditionalDetail: () => void; attachmentsExpanded: boolean; onToggleAttachments: () => void
 }) {
+  const categoryKey = resolveCategoryKey(ticket.issueType.name)
+const ticketType  = CATEGORY_TO_TYPE[categoryKey]
   const insets = useSafeAreaInsets()
   const priority = colors.priority[ticket.priority]
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null)
@@ -268,9 +273,9 @@ function TicketInfoCard({ ticket, additionalDetailExpanded, onToggleAdditionalDe
   return (
     <View style={styles.card}>
       <View style={styles.titleRow}>
-        <View style={styles.iconCircle}>
-          <View style={styles.iconCircleDot} />
-        </View>
+        <View style={[styles.iconCircle, { backgroundColor: colors.category[categoryKey]?.bg ?? colors.brandDim }]}>
+  <TicketTypeIcon type={ticketType} category={categoryKey} variant="plain" size={20} />
+</View>
         <View style={styles.titleMeta}>
           <Text style={styles.ticketTitle}>{ticket.shortDescription}</Text>
           <Text style={styles.reportedAt}>Reported : {ticket.reportedAt}</Text>
@@ -550,7 +555,6 @@ const styles = StyleSheet.create({
 
   titleRow:      { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, marginBottom: spacing.md },
   iconCircle:    { width: 38, height: 38, borderRadius: 10, backgroundColor: colors.brandDim, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  iconCircleDot: { width: 14, height: 14, borderRadius: 7, backgroundColor: colors.brand },
   titleMeta:     { flex: 1 },
   ticketTitle:   { fontSize: typography.sizes.cardTitle, fontFamily: typography.fonts.bold, color: colors.textPrimary, marginBottom: 2 },
   reportedAt:    { fontSize: typography.sizes.microcopy, fontFamily: typography.fonts.regular, color: colors.textSecondary },

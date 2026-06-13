@@ -1,39 +1,14 @@
+//src/features/dashboard/components/TicketCard.tsx
 import React from 'react'
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
+import { TicketTypeIcon } from '@/components/ui/TicketTypeIcon'
 import { StatusBadge } from '@/components/ui/StatusBadge'
-import { colors, spacing, typography, radius } from '@/constants'
+import { colors, spacing, typography, radius, CATEGORY_TO_TYPE } from '@/constants'
 import type { CategoryKey, PriorityKey } from '@/constants'
-import { normalizeStatus } from '@/utils/normalizeStatus'
+import { resolveCategoryKey } from '@/utils/resolveCategoryKey'
 
-// ─── Category helpers (from v2) ──────────────────────────────────────────────
-
-function resolveCategoryKey(raw: string): CategoryKey {
-  const map: Record<string, CategoryKey> = {
-    electrical:             'electrical',
-    plumbing:               'plumbing',
-    room_condition:         'room_condition',
-    cleaning:               'cleaning',
-    staff_help:             'staff_help',
-    cleanliness:            'cleanliness',
-    facility_condition:     'facility_condition',
-    'Electrical Problem':   'electrical',
-    'Plumbing':             'plumbing',
-    'Room Condition':       'room_condition',
-    'Cleaning':             'cleaning',
-    'Staff Assistance':     'staff_help',
-    'Cleanliness':          'cleanliness',
-    'Facility Condition':   'facility_condition',
-    'HVAC':                 'facility_condition',
-    'Equipment':            'room_condition',
-    'Maintenance':          'facility_condition',
-    'Building & Facility':  'facility_condition',
-    'Cleaning Issue':       'cleaning',
-    'Facility Issue':       'facility_condition',
-    'General Information':  'facility_condition',
-  }
-  return map[raw] ?? 'facility_condition'
-}
+// ─── Category helpers ──────────────────────────────────────────────────────
 
 const CATEGORY_LABEL: Record<CategoryKey, string> = {
   electrical:         'Electrical',
@@ -43,17 +18,8 @@ const CATEGORY_LABEL: Record<CategoryKey, string> = {
   staff_help:         'Staff Help',
   cleanliness:        'Cleanliness',
   facility_condition: 'Facility',
-}
-
-// Maps CategoryKey → Ionicons glyph (visual identity from v1)
-const CATEGORY_ICON: Record<CategoryKey, keyof typeof Ionicons.glyphMap> = {
-  electrical:         'flash-outline',
-  plumbing:           'water-outline',
-  room_condition:     'construct-outline',
-  cleaning:           'sparkles-outline',
-  staff_help:         'people-outline',
-  cleanliness:        'sparkles-outline',
-  facility_condition: 'business-outline',
+  general_information: 'Information',
+  security_issue: 'Security',
 }
 
 // ─── Timestamp helper (from v2) ───────────────────────────────────────────────
@@ -106,13 +72,11 @@ export function TicketCard({
   const priorityRaw  = (ticket.priority ?? 'medium') as PriorityKey
 
   const categoryKey    = resolveCategoryKey(categoryRaw)
+  const ticketType     = CATEGORY_TO_TYPE[categoryKey]
   const categoryColor  = colors.category[categoryKey].dot
   const categoryBg     = colors.category[categoryKey].bg
   const categoryLabel  = CATEGORY_LABEL[categoryKey]
-  const iconName       = CATEGORY_ICON[categoryKey]
   const priorityConfig = colors.priority[priorityRaw] ?? colors.priority.medium
-
-  {console.log('StatusBadge value:', ticket.status, ticket.status_name)}
 
   return (
     <TouchableOpacity
@@ -138,13 +102,13 @@ export function TicketCard({
       {/* ── Row 2: Icon circle + ID/Title + StatusBadge ── */}
       <View style={styles.titleRow}>
         <View style={[styles.iconCircle, { backgroundColor: categoryBg }]}>
-          <Ionicons name={iconName} size={20} color={categoryColor} />
+          <TicketTypeIcon type={ticketType} category={categoryKey} variant="plain" size={20} />
         </View>
         <View style={styles.titleInfo}>
           <Text style={styles.ticketId}>#{ticket.id}</Text>
           <Text style={styles.title} numberOfLines={1}>{shortDesc}</Text>
         </View>
-        
+
         <StatusBadge status={statusRaw} role={role} />
       </View>
 

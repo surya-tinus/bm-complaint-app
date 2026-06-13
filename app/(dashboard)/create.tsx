@@ -14,7 +14,10 @@ import { LocationPickerSheet } from '@/features/dashboard/components/LocationPic
 import { Toast } from '@/components/ui/Toast'
 import { InlineError } from '@/components/ui/InlineError'
 import { useToast } from '@/hooks/useToast'
-import { colors, spacing, typography, radius, screenPadding } from '@/constants'
+import { colors, spacing, typography, radius, screenPadding, CATEGORY_TO_TYPE } from '@/constants'
+import { Ionicons } from '@expo/vector-icons'
+import { TicketTypeIcon } from '@/components/ui/TicketTypeIcon'
+import { resolveCategoryKey } from '@/utils/resolveCategoryKey'
 
 export default function CreateTicketScreen() {
   const { data: placesList = [], isLoading: placesLoading, isError: placesError, refetch: refetchPlaces } = usePlaces()
@@ -106,11 +109,13 @@ export default function CreateTicketScreen() {
               />
             )}
             {currentStep === 2 && (
+              
               <Step2IssueType
                 issueTypes={issueTypesByCategory[form.selectedCategory?.name ?? ''] ?? []}
                 selectedIssueType={form.selectedIssueType}
                 onSelectIssueType={selectIssueType}
               />
+              
             )}
             {currentStep === 3 && (
               <Step3Details
@@ -179,6 +184,8 @@ function Step1Category({ categories, selectedCategory, onSelectCategory }: {
       <Text style={styles.sectionLabel}>Report Category</Text>
       {categories.map((cat) => {
         const isSelected = selectedCategory?.id === cat.id
+        const categoryKey = resolveCategoryKey(cat.name)
+        const ticketType  = CATEGORY_TO_TYPE[categoryKey]
         return (
           <TouchableOpacity
             key={cat.id}
@@ -187,7 +194,7 @@ function Step1Category({ categories, selectedCategory, onSelectCategory }: {
             activeOpacity={0.85}
           >
             <View style={[styles.selectionIconCircle, isSelected && styles.selectionIconCircleSelected]}>
-              <View style={[styles.selectionIconDot, { backgroundColor: isSelected ? colors.brand : colors.textMuted }]} />
+              <TicketTypeIcon type={ticketType} category={categoryKey} variant="plain" size={22} color={colors.textSecondary} />
             </View>
             <View style={styles.selectionInfo}>
               <Text style={[styles.selectionName, isSelected && styles.selectionNameSelected]}>{cat.name}</Text>
@@ -214,7 +221,9 @@ function Step2IssueType({ issueTypes, selectedIssueType, onSelectIssueType }: {
     <ScrollView contentContainerStyle={styles.stepContent} showsVerticalScrollIndicator={false}>
       <Text style={styles.sectionLabel}>Issue Type</Text>
       {issueTypes.map((item) => {
-        const isSelected = selectedIssueType?.id === item.id
+        const isSelected  = selectedIssueType?.id === item.id
+        const categoryKey = resolveCategoryKey(item.name)
+        const ticketType  = CATEGORY_TO_TYPE[categoryKey]
         return (
           <TouchableOpacity
             key={item.id}
@@ -223,7 +232,7 @@ function Step2IssueType({ issueTypes, selectedIssueType, onSelectIssueType }: {
             activeOpacity={0.85}
           >
             <View style={[styles.selectionIconCircle, isSelected && styles.selectionIconCircleSelected]}>
-              <View style={[styles.selectionIconDot, { backgroundColor: isSelected ? colors.brand : colors.textMuted }]} />
+              <TicketTypeIcon type={ticketType} category={categoryKey} variant="plain" size={22} color={colors.textSecondary} />
             </View>
             <View style={styles.selectionInfo}>
               <Text style={[styles.selectionName, isSelected && styles.selectionNameSelected]}>{item.name}</Text>
@@ -429,7 +438,6 @@ const styles = StyleSheet.create({
   selectionCardSelected:       { borderColor: colors.brand, backgroundColor: colors.brandDim },
   selectionIconCircle:         { width: 44, height: 44, borderRadius: 10, backgroundColor: colors.bgBase, alignItems: 'center', justifyContent: 'center' },
   selectionIconCircleSelected: { backgroundColor: colors.brandSubtle },
-  selectionIconDot:            { width: 16, height: 16, borderRadius: 8 },
   selectionInfo:               { flex: 1 },
   selectionName:               { fontSize: typography.sizes.cardTitle, fontFamily: typography.fonts.bold, color: colors.textPrimary, marginBottom: 2 },
   selectionNameSelected:       { color: colors.brand },

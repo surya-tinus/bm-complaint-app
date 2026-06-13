@@ -40,6 +40,7 @@ export const getAllTickets = async (params?: {
       place: { building: t.building, name: t.place_name },
       priority: t.priority as PriorityLevel,
       staffEmplid: t.staff_emplid ?? null,
+      issueTypeIcon: t.issue_type_icon ?? 'help-circle-outline',  
     }))
   } catch (err: any) {
     console.log('getAllTickets ERROR:', err?.response?.status, err?.response?.data, err?.message)

@@ -53,6 +53,8 @@ export const colors = {
     staff_help:         { dot: '#10B981', bg: '#D1FAE5' },
     cleanliness:        { dot: '#6B7280', bg: '#F3F4F6' },
     facility_condition: { dot: '#EF4444', bg: '#FEE2E2' },
+    general_information: { dot: '#8B5CF6', bg: '#EDE9FE' },
+security_issue:      { dot: '#EF4444', bg: '#FEE2E2' },
   },
 } as const
 
