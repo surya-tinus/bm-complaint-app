@@ -34,7 +34,7 @@ export const useTicketDetail = (id: string, externalToken?: string) => {
   const query = useQuery({
     queryKey: ['ticket', id, externalToken],
     queryFn: () => getTicketById(id, externalToken),
-    enabled: !!id,
+    enabled: !!id && String(id).trim() !== '',
   })
   console.log('raw ticket data:', JSON.stringify(query.data))
   
