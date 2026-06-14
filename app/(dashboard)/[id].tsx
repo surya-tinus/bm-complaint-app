@@ -98,64 +98,53 @@ export default function TicketDetailScreen() {
       >
         <TicketInfoCard
           ticket={ticket}
+          role={role?.toLowerCase() as 'user' | 'staff' ?? 'user'}
           additionalDetailExpanded={additionalDetailExpanded}
           onToggleAdditionalDetail={() => setAdditionalDetailExpanded(!additionalDetailExpanded)}
           attachmentsExpanded={attachmentsExpanded}
           onToggleAttachments={() => setAttachmentsExpanded(!attachmentsExpanded)}
         />
-        <StatusTimelineCard ticket={ticket} />
+        <StatusTimelineCard
+  ticket={ticket}
+  canComment={canComment}
+  onComment={() => triggerAction('comment')}
+/>
         <AssignedStaffCard ticket={ticket} />
       </ScrollView>
+      
 
-     {hasActionBar && (
-  <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12 }]}>
-    
-    {/* Row 1: Staff actions — Hold, Continue, Claim, Resolve */}
-    {(canHold || canContinue || canClaim || canResolve) && (
-      <View style={[styles.staffActionRow, { marginBottom: spacing.sm }]}>
-        {canHold     && <TouchableOpacity style={styles.btnOutline}  onPress={() => triggerAction('hold')}     activeOpacity={0.85}><Text style={styles.btnOutlineText}>Hold</Text></TouchableOpacity>}
-        {canContinue && <TouchableOpacity style={styles.btnPrimary}  onPress={() => triggerAction('continue')} activeOpacity={0.85}><Text style={styles.btnPrimaryText}>Continue</Text></TouchableOpacity>}
-        {canClaim    && <TouchableOpacity style={styles.btnPrimary}  onPress={() => triggerAction('claim')}    activeOpacity={0.85}><Text style={styles.btnPrimaryText}>Accept</Text></TouchableOpacity>}
-        {canResolve  && <TouchableOpacity style={styles.btnPrimary}  onPress={() => triggerAction('resolve')}  activeOpacity={0.85}><Text style={styles.btnPrimaryText}>Resolve</Text></TouchableOpacity>}
-      </View>
-    )}
-
-    {/* Row 2: Approve */}
-    {canApprove && (
-      <View style={[styles.staffActionRow, { marginBottom: spacing.sm }]}>
-        <TouchableOpacity style={styles.btnPrimary} onPress={() => triggerAction('approve')} activeOpacity={0.85}>
-          <Text style={styles.btnPrimaryText}>Approve</Text>
-        </TouchableOpacity>
-      </View>
-    )}
-
-    {/* Row 3: Cancel + Comment */}
-    {(canCancel || canComment) && (
-      <View style={styles.staffActionRow}>
-        {canCancel && (
+     {canCancel && (
+        <View style={[styles.cancelBar, { paddingBottom: insets.bottom + 12 }]}>
           <TouchableOpacity
-            style={[styles.btnPrimary, { backgroundColor: '#DC2626', flex: canComment ? 2 : 1 }]}
+            style={styles.cancelBarBtn}
             onPress={() => setCancelModalVisible(true)}
-            activeOpacity={0.85}
+            activeOpacity={0.8}
           >
-            <Text style={styles.btnPrimaryText}>Cancel Report</Text>
+            <Text style={styles.cancelBarBtnText}>Batalkan Laporan</Text>
           </TouchableOpacity>
-        )}
-        {canComment && (
-          <TouchableOpacity
-            style={[styles.btnOutline, { flex: 1 }]}
-            onPress={() => triggerAction('comment')}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.btnOutlineText}>Comment</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-    )}
+        </View>
+      )}
 
-  </View>
-)}
-
+      {/* Staff action bar — terpisah dari cancel */}
+      {(canHold || canContinue || canClaim || canResolve || canApprove) && (
+        <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12 }]}>
+          {(canHold || canContinue || canClaim || canResolve) && (
+            <View style={[styles.staffActionRow, { marginBottom: spacing.sm }]}>
+              {canHold     && <TouchableOpacity style={styles.btnOutline}  onPress={() => triggerAction('hold')}     activeOpacity={0.85}><Text style={styles.btnOutlineText}>Hold</Text></TouchableOpacity>}
+              {canContinue && <TouchableOpacity style={styles.btnPrimary}  onPress={() => triggerAction('continue')} activeOpacity={0.85}><Text style={styles.btnPrimaryText}>Continue</Text></TouchableOpacity>}
+              {canClaim    && <TouchableOpacity style={styles.btnPrimary}  onPress={() => triggerAction('claim')}    activeOpacity={0.85}><Text style={styles.btnPrimaryText}>Accept</Text></TouchableOpacity>}
+              {canResolve  && <TouchableOpacity style={styles.btnPrimary}  onPress={() => triggerAction('resolve')}  activeOpacity={0.85}><Text style={styles.btnPrimaryText}>Resolve</Text></TouchableOpacity>}
+            </View>
+          )}
+          {canApprove && (
+            <View style={styles.staffActionRow}>
+              <TouchableOpacity style={styles.btnPrimary} onPress={() => triggerAction('approve')} activeOpacity={0.85}>
+                <Text style={styles.btnPrimaryText}>Approve</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      )}
 
       <CancelModal visible={cancelModalVisible} onKeep={() => setCancelModalVisible(false)} onCancel={handleCancel} isLoading={isCancelling} />
       {pendingAction && (
@@ -253,8 +242,10 @@ function Header({ id, onBack, topInset }: { id: string; onBack: () => void; topI
 
 // ─── Ticket Info Card ──────────────────────────────────────
 
-function TicketInfoCard({ ticket, additionalDetailExpanded, onToggleAdditionalDetail, attachmentsExpanded, onToggleAttachments }: {
-  ticket: TicketDetail; additionalDetailExpanded: boolean; onToggleAdditionalDetail: () => void; attachmentsExpanded: boolean; onToggleAttachments: () => void
+function TicketInfoCard({ ticket, role, additionalDetailExpanded, onToggleAdditionalDetail, attachmentsExpanded, onToggleAttachments }: {
+  ticket: TicketDetail
+  role: 'user' | 'staff'
+  additionalDetailExpanded: boolean; onToggleAdditionalDetail: () => void; attachmentsExpanded: boolean; onToggleAttachments: () => void
 }) {
   const categoryKey = resolveCategoryKey(ticket.issueType.name)
 const ticketType  = CATEGORY_TO_TYPE[categoryKey]
@@ -263,6 +254,15 @@ const ticketType  = CATEGORY_TO_TYPE[categoryKey]
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null)
   const [isZoomed, setIsZoomed] = useState(false)
   const token = useAuthStore((s) => s.token)
+
+  function formatReportedAt(raw: string | undefined | null): string {
+  if (!raw) return ''
+  const date = new Date(raw)
+  if (isNaN(date.getTime())) return raw
+  return date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
+    + ', '
+    + date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+}
 
   useEffect(() => {
     if (attachmentsExpanded && ticket.attachments.length > 0) {
@@ -278,17 +278,19 @@ const ticketType  = CATEGORY_TO_TYPE[categoryKey]
 </View>
         <View style={styles.titleMeta}>
           <Text style={styles.ticketTitle}>{ticket.shortDescription}</Text>
-          <Text style={styles.reportedAt}>Reported : {ticket.reportedAt}</Text>
+          <Text style={styles.reportedAt}>{formatReportedAt(ticket.reportedAt)}</Text>
         </View>
         <StatusBadge status={ticket.status} />
       </View>
 
       <View style={styles.badgeRow}>
-        <View style={[styles.priorityBadge, { backgroundColor: priority.bg }]}>
-          <Text style={[styles.priorityText, { color: priority.text }]}>
-            {ticket.priority.charAt(0).toUpperCase() + ticket.priority.slice(1)} Priority
-          </Text>
-        </View>
+        {role === 'staff' && (
+          <View style={[styles.priorityBadge, { backgroundColor: priority.bg }]}>
+            <Text style={[styles.priorityText, { color: priority.text }]}>
+              {ticket.priority.charAt(0).toUpperCase() + ticket.priority.slice(1)} Priority
+            </Text>
+          </View>
+        )}
         <View style={styles.issueTypeBadge}>
           <Text style={styles.issueTypeText}>{ticket.issueType.name}</Text>
         </View>
@@ -367,7 +369,11 @@ const ticketType  = CATEGORY_TO_TYPE[categoryKey]
 
 // ─── Status Timeline Card ──────────────────────────────────
 
-function StatusTimelineCard({ ticket }: { ticket: TicketDetail }) {
+function StatusTimelineCard({ ticket, canComment, onComment }: {
+  ticket: TicketDetail
+  canComment?: boolean
+  onComment?: () => void
+}) {
   return (
     <View style={styles.card}>
       <View style={styles.sectionHeaderRow}>
@@ -379,6 +385,20 @@ function StatusTimelineCard({ ticket }: { ticket: TicketDetail }) {
           <TimelineItem key={step.id} step={step} isLast={index === ticket.timeline.length - 1} />
         ))}
       </View>
+
+      {/* ── Comment button di bawah timeline ── */}
+      {canComment && (
+        <>
+          <View style={styles.divider} />
+          <TouchableOpacity
+            style={styles.addCommentBtn}
+            onPress={onComment}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.addCommentText}>+ Tambah Catatan</Text>
+          </TouchableOpacity>
+        </>
+      )}
     </View>
   )
 }
@@ -620,6 +640,13 @@ const styles = StyleSheet.create({
   staffNotesTime:   { fontSize: typography.sizes.microcopy, fontFamily: typography.fonts.regular, color: colors.textMuted },
   staffNotesBox:    { backgroundColor: colors.bgElevated, borderRadius: radius.input, padding: spacing.md },
   staffNotesText:   { fontSize: typography.sizes.body, fontFamily: typography.fonts.regular, color: colors.textSecondary, lineHeight: 20 },
+  cancelInCard:     { marginTop: spacing.lg, alignSelf: 'flex-start' },
+  cancelInCardText: { fontSize: typography.sizes.body, fontFamily: typography.fonts.medium, color: '#DC2626' },
+  addCommentBtn:  { paddingVertical: spacing.sm, alignSelf: 'flex-start' },
+  addCommentText: { fontSize: typography.sizes.body, fontFamily: typography.fonts.medium, color: colors.brand },
+  cancelBar:       { backgroundColor: colors.bgBase, borderTopWidth: 0.5, borderTopColor: colors.borderDefault, paddingHorizontal: screenPadding, paddingTop: spacing.md, alignItems: 'center' },
+  cancelBarBtn:    { borderWidth: 1.5, borderColor: '#DC2626', borderRadius: radius.button, paddingVertical: 12, paddingHorizontal: 40 },
+  cancelBarBtnText:{ fontSize: typography.sizes.button, fontFamily: typography.fonts.medium, color: '#DC2626' },  
 
   bottomBar:      { backgroundColor: colors.bgBase, borderTopWidth: 0.5, borderTopColor: colors.borderDefault, paddingHorizontal: screenPadding, paddingTop: spacing.md },
   cancelBarWrap:  { alignItems: 'center' },

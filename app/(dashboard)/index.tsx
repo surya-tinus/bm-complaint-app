@@ -22,6 +22,7 @@ import { DashboardSkeleton } from '@/components/ui/Skeleton'
 import { useDashboard } from '@/features/dashboard/hooks/useDashboard'
 import { useAuthStore } from '@/store/auth.store'
 import { colors, spacing, typography, radius, screenPadding } from '@/constants'
+import { ClockCounterClockwise } from 'phosphor-react-native'
 
 export default function DashboardScreen() {
   const [rejectModalVisible, setRejectModalVisible] = useState(false)
@@ -115,14 +116,14 @@ const handleConfirmReject = () => {
           </Text>
         </View>
         {isStaff && (
-    <TouchableOpacity
-      style={styles.backBtn}
-      onPress={() => router.push('/(dashboard)/history')}
-      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-    >
-      <Text style={styles.backBtnText}>🕐</Text>
-    </TouchableOpacity>
-  )}
+  <TouchableOpacity
+    style={styles.backBtn}
+    onPress={() => router.push('/(dashboard)/history')}
+    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+  >
+    <ClockCounterClockwise size={20} color={colors.textOnBrand} weight="regular" />
+  </TouchableOpacity>
+)}
       </View>
 
       {/* Body */}
@@ -279,10 +280,10 @@ function StaffOverview({
 }) {
   return (
     <View style={styles.overviewGrid}>
-      <View style={[styles.overviewTile, { backgroundColor: colors.brand }]}>
-        <Text style={styles.overviewNum}>{stats.assigned}</Text>
-        <Text style={styles.overviewLabel}>New Tickets</Text>
-      </View>
+      <View style={[styles.overviewTile, { backgroundColor: colors.brandDim, borderWidth: 0.5, borderColor: colors.borderStrong }]}>
+  <Text style={[styles.overviewNum, { color: colors.brandText }]}>{stats.assigned}</Text>
+  <Text style={[styles.overviewLabel, { color: colors.textMuted }]}>New Tickets</Text>
+</View>
       <View style={[styles.overviewTile, { backgroundColor: colors.brandDim }]}>
         <Text style={[styles.overviewNum, { color: colors.brandText }]}>{stats.active}</Text>
         <Text style={[styles.overviewLabel, { color: colors.textMuted }]}>Active</Text>
@@ -626,4 +627,17 @@ commentRequired:    { fontSize: typography.sizes.microcopy, fontFamily: typograp
   modalPrimaryText:   { fontSize: typography.sizes.button, fontFamily: typography.fonts.medium, color: colors.textOnBrand },
   modalCard:          { backgroundColor: colors.bgCard, borderRadius: radius.modal, padding: spacing.xl, width: '100%' },
   commentInput:       { backgroundColor: colors.bgElevated, borderWidth: 1, borderColor: colors.borderDefault, borderRadius: radius.input, paddingHorizontal: spacing.lg, paddingVertical: spacing.md, fontSize: typography.sizes.body, fontFamily: typography.fonts.regular, color: colors.textPrimary, minHeight: 80, marginBottom: spacing.sm },
+
+  historyBtn: {
+  paddingHorizontal: spacing.md,
+  paddingVertical: spacing.xs,
+  borderRadius: radius.button,
+  borderWidth: 1,
+  borderColor: 'rgba(255,255,255,0.3)',
+},
+historyBtnText: {
+  color: colors.textOnBrand,
+  fontSize: typography.sizes.body,
+  fontFamily: typography.fonts.medium,
+},
 })

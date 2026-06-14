@@ -3,6 +3,7 @@ import {
   View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet,
   SafeAreaView, StatusBar, Modal, ActivityIndicator, Image, Alert,
 } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
 import * as ImagePicker from 'expo-image-picker'
 import { useCreateTicket } from '@/features/dashboard/hooks/useCreateTicket'
@@ -18,8 +19,10 @@ import { colors, spacing, typography, radius, screenPadding, CATEGORY_TO_TYPE } 
 import { Ionicons } from '@expo/vector-icons'
 import { TicketTypeIcon } from '@/components/ui/TicketTypeIcon'
 import { resolveCategoryKey } from '@/utils/resolveCategoryKey'
+import { ImageIcon } from 'phosphor-react-native'
 
 export default function CreateTicketScreen() {
+  const insets = useSafeAreaInsets()
   const { data: placesList = [], isLoading: placesLoading, isError: placesError, refetch: refetchPlaces } = usePlaces()
   const { data: issueTypesByCategory = {}, isLoading: typesLoading, isError: typesError, refetch: refetchTypes } = useIssueTypesByCategory()
   const { toast, showToast, hideToast } = useToast()
@@ -50,27 +53,29 @@ export default function CreateTicketScreen() {
     }
   }, [isSubmitError])
 
+  
+
   const STEP_TITLES = ['SELECT CATEGORY', 'SELECT TYPE', 'PROBLEM DESCRIPTION']
   const isFetchError = placesError || typesError
 
   if (placesLoading || typesLoading) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <View style={[styles.safeArea, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
         <View style={styles.loadingWrap}>
           <ActivityIndicator color={colors.textOnBrand} size="large" />
           <Text style={styles.loadingText}>Loading data...</Text>
         </View>
-      </SafeAreaView>
+      </View>
     )
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.brand} />
-
-      <Toast visible={toast.visible} message={toast.message} type={toast.type} onHide={hideToast} />
-
+    <View style={styles.safeArea}>
+    <StatusBar barStyle="light-content" backgroundColor={colors.brand} />
+    <Toast visible={toast.visible} message={toast.message} type={toast.type} onHide={hideToast} />
+      
       {/* App Bar */}
+      <View style={{ height: insets.top, backgroundColor: colors.brand }} />
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={goPrev} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Text style={styles.backBtnText}>←</Text>
@@ -81,7 +86,19 @@ export default function CreateTicketScreen() {
         </View>
       </View>
 
-      {/* Step Indicator */}
+      
+
+      {/* Body */}
+      <View style={styles.body}>
+        
+        {isFetchError ? (
+          <InlineError
+            message="Failed to load data. Check your internet connection."
+            onRetry={() => { if (placesError) refetchPlaces(); if (typesError) refetchTypes() }}
+          />
+        ) : (
+          <>
+          {/* Step Indicator */}
       <View style={styles.stepIndicator}>
         <Text style={styles.stepLabel}>STEP {currentStep} OF {totalSteps}</Text>
         <View style={styles.stepBarRow}>
@@ -91,16 +108,6 @@ export default function CreateTicketScreen() {
         </View>
         <Text style={styles.stepTitle}>{STEP_TITLES[currentStep - 1]}</Text>
       </View>
-
-      {/* Body */}
-      <View style={styles.body}>
-        {isFetchError ? (
-          <InlineError
-            message="Failed to load data. Check your internet connection."
-            onRetry={() => { if (placesError) refetchPlaces(); if (typesError) refetchTypes() }}
-          />
-        ) : (
-          <>
             {currentStep === 1 && (
               <Step1Category
                 categories={CATEGORIES}
@@ -137,7 +144,7 @@ export default function CreateTicketScreen() {
       </View>
 
       {/* Bottom Bar */}
-      <View style={styles.bottomBar}>
+      <View style={[styles.bottomBar, { paddingBottom: insets.bottom + spacing.md }]}>
         {currentStep > 1 && (
           <TouchableOpacity style={styles.prevBtn} onPress={goPrev}>
             <Text style={styles.prevBtnText}>Back</Text>
@@ -168,7 +175,8 @@ export default function CreateTicketScreen() {
         onConfirm={handleConfirmSubmit}
         isLoading={isSubmitting}
       />
-    </SafeAreaView>
+      <View style={styles.safeAreaBottom} />
+    </View>
   )
 }
 
@@ -181,7 +189,6 @@ function Step1Category({ categories, selectedCategory, onSelectCategory }: {
 }) {
   return (
     <ScrollView contentContainerStyle={styles.stepContent} showsVerticalScrollIndicator={false}>
-      <Text style={styles.sectionLabel}>Report Category</Text>
       {categories.map((cat) => {
         const isSelected = selectedCategory?.id === cat.id
         const categoryKey = resolveCategoryKey(cat.name)
@@ -351,9 +358,10 @@ function Step3Details({ places, placesByBuilding, selectedPlaceId, onSelectPlace
         </ScrollView>
       ) : (
         <TouchableOpacity style={styles.uploadBox} onPress={handleUploadPress} activeOpacity={0.8}>
-          <Text style={styles.uploadTitle}>Upload or take a photo</Text>
-          <Text style={styles.uploadSubtitle}>Format: JPG, PNG, JPEG · Max. 10 MB</Text>
-        </TouchableOpacity>
+  <ImageIcon size={32} color={colors.brand} weight="thin" />
+  <Text style={styles.uploadTitle}>Upload or take a photo</Text>
+  <Text style={styles.uploadSubtitle}>Format: JPG, PNG, JPEG · Max. 10 MB</Text>
+</TouchableOpacity>
       )}
 
       <View style={{ height: spacing.lg }} />
@@ -389,23 +397,53 @@ function ConfirmModal({ visible, onCancel, onConfirm, isLoading }: {
 // ─── Styles ────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  safeArea:    { flex: 1, backgroundColor: colors.brand },
+  safeArea: { flex: 1, backgroundColor: colors.bgBase },
   loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.md },
   loadingText: { color: 'rgba(255,255,255,0.8)', fontSize: typography.sizes.body, fontFamily: typography.fonts.regular },
 
-  header:         { backgroundColor: colors.brand, flexDirection: 'row', alignItems: 'center', paddingHorizontal: screenPadding, paddingTop: spacing.sm, paddingBottom: spacing.md, gap: 14 },
+// Ganti style header di create.tsx:
+header: {
+  backgroundColor: colors.brand,
+  flexDirection: 'row',
+  alignItems: 'center',
+  paddingHorizontal: screenPadding,
+  paddingBottom: spacing.lg,
+  paddingTop: spacing.sm,
+  gap: 14,
+},
   backBtn:        { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
   backBtnText:    { color: colors.textOnBrand, fontSize: 18, lineHeight: 22 },
   headerTitle:    { color: colors.textOnBrand, fontSize: typography.sizes.appBarTitle, fontFamily: typography.fonts.bold },
   headerSubtitle: { color: 'rgba(255,255,255,0.55)', fontSize: typography.sizes.appBarSubtitle, fontFamily: typography.fonts.regular, marginTop: 2 },
 
-  stepIndicator: { backgroundColor: colors.brand, paddingHorizontal: screenPadding, paddingBottom: spacing.lg },
-  stepLabel:     { color: 'rgba(255,255,255,0.6)', fontSize: typography.sizes.stepLabel, fontFamily: typography.fonts.medium, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: spacing.sm },
+  stepIndicator: {
+  backgroundColor: colors.bgBase,       // ← sama dengan body, bukan bgCard
+  paddingHorizontal: screenPadding,
+  paddingTop: spacing.lg,
+  paddingBottom: spacing.md,
+  borderBottomWidth: 0.5,
+  borderBottomColor: colors.borderDefault,
+},
+stepBarActive:   { backgroundColor: colors.brand },
+stepBarInactive: { backgroundColor: colors.borderDefault },
+stepTitle: {
+  color: colors.textPrimary,
+  fontSize: typography.sizes.sectionHeader,
+  fontFamily: typography.fonts.bold,
+  letterSpacing: 0.5,
+},
+stepLabel: {
+  color: colors.textMuted,
+  fontSize: typography.sizes.stepLabel,
+  fontFamily: typography.fonts.medium,
+  textTransform: 'uppercase',
+  letterSpacing: 0.5,
+  marginBottom: spacing.sm,
+},
+  
   stepBarRow:    { flexDirection: 'row', gap: 6, marginBottom: spacing.md },
   stepBar:       { flex: 1, height: 3, borderRadius: 2 },
-  stepBarActive: { backgroundColor: colors.textOnBrand },
-  stepBarInactive:{ backgroundColor: 'rgba(255,255,255,0.25)' },
-  stepTitle:     { color: colors.textOnBrand, fontSize: typography.sizes.sectionHeader, fontFamily: typography.fonts.bold, letterSpacing: 0.5 },
+  
 
   body:        { flex: 1, backgroundColor: colors.bgBase },
   stepContent: { padding: screenPadding, paddingBottom: 32 },
@@ -504,4 +542,7 @@ const styles = StyleSheet.create({
   modalCancelText: { fontSize: typography.sizes.button, fontFamily: typography.fonts.medium, color: colors.textPrimary },
   modalConfirmBtn: { flex: 1, backgroundColor: colors.brand, borderRadius: radius.button, paddingVertical: 13, alignItems: 'center' },
   modalConfirmText:{ fontSize: typography.sizes.button, fontFamily: typography.fonts.medium, color: colors.textOnBrand },
+
+  safeAreaBottom: { backgroundColor: colors.bgBase, position: 'absolute', bottom: 0, left: 0, right: 0, height: 34 },
+  statusBarBg: { backgroundColor: colors.brand },
 })

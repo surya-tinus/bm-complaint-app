@@ -50,11 +50,6 @@ export default function LoginScreen() {
           secureTextEntry
         />
 
-        {/* Hint saat pakai mock */}
-        <Text style={styles.hint}>
-          (Mock) Email: surya@example.com | Password: password123
-        </Text>
-
         <TouchableOpacity
           style={[styles.button, isPending && styles.buttonDisabled]}
           onPress={handleLogin}

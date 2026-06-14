@@ -39,12 +39,12 @@ export default function HistoryScreen() {
       {/* App Bar */}
       <View style={styles.appBar}>
         <TouchableOpacity
-          style={styles.backBtn}
-          onPress={() => router.back()}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Text style={styles.backBtnText}>←</Text>
-        </TouchableOpacity>
+  style={styles.backBtn}
+  onPress={() => router.back()}
+  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+>
+  <Text style={styles.backBtnText}>←</Text>
+</TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={styles.appBarTitle}>History</Text>
           <Text style={styles.appBarSubtitle}>Tickets you have resolved</Text>
@@ -176,4 +176,14 @@ const styles = StyleSheet.create({
     fontFamily: typography.fonts.medium,
     fontSize: typography.sizes.button,
   },
+  homeBtn: {
+  paddingHorizontal: spacing.sm,
+  paddingVertical: spacing.xs,
+},
+homeBtnText: {
+  color: colors.textOnBrand,
+  fontSize: typography.sizes.body,
+  fontFamily: typography.fonts.medium,
+  opacity: 0.85,
+},
 })

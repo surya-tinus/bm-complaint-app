@@ -92,11 +92,13 @@ export function TicketCard({
             {categoryLabel}
           </Text>
         </View>
-        <View style={[styles.priorityBadge, { backgroundColor: priorityConfig.bg }]}>
-          <Text style={[styles.priorityText, { color: priorityConfig.text }]}>
-            {priorityRaw.toUpperCase()}
-          </Text>
-        </View>
+        {role === 'staff' && (
+  <View style={[styles.priorityBadge, { backgroundColor: priorityConfig.bg }]}>
+    <Text style={[styles.priorityText, { color: priorityConfig.text }]}>
+      {priorityRaw.toUpperCase()}
+    </Text>
+  </View>
+)}
       </View>
 
       {/* ── Row 2: Icon circle + ID/Title + StatusBadge ── */}
