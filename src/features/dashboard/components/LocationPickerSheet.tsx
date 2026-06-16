@@ -94,7 +94,7 @@ export function LocationPickerSheet({ places, placesByBuilding, selectedPlaceId,
         activeOpacity={0.8}
       >
         <Text style={[styles.triggerText, !selectedPlace && styles.triggerPlaceholder]} numberOfLines={1}>
-          {selectedPlace ? `${selectedPlace.building} — ${selectedPlace.name}` : 'Pilih lokasi'}
+          {selectedPlace ? `${selectedPlace.building} — ${selectedPlace.name}` : 'Pick Location'}
         </Text>
         <Text style={styles.triggerChevron}>▾</Text>
       </TouchableOpacity>
@@ -110,7 +110,7 @@ export function LocationPickerSheet({ places, placesByBuilding, selectedPlaceId,
                 <View style={styles.handle} />
               </View>
               <View style={styles.sheetHeader}>
-                <Text style={styles.sheetTitle}>Pilih Lokasi</Text>
+                <Text style={styles.sheetTitle}>Pick Location</Text>
                 <View style={styles.headerActions}>
                   <TouchableOpacity onPress={isExpanded ? collapseSheet : expandSheet} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={styles.expandBtn}>
                     <Text style={styles.expandBtnText}>{isExpanded ? '▾' : '▴'}</Text>
@@ -126,7 +126,7 @@ export function LocationPickerSheet({ places, placesByBuilding, selectedPlaceId,
             <View style={styles.searchContainer}>
               <TextInput
                 style={styles.searchInput}
-                placeholder="Cari ruangan atau gedung..."
+                placeholder="Search by room or building..."
                 placeholderTextColor={colors.textMuted}
                 value={query}
                 onChangeText={setQuery}

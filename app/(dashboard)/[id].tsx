@@ -120,7 +120,7 @@ export default function TicketDetailScreen() {
             onPress={() => setCancelModalVisible(true)}
             activeOpacity={0.8}
           >
-            <Text style={styles.cancelBarBtnText}>Batalkan Laporan</Text>
+            <Text style={styles.cancelBarBtnText}>Cancel Ticket</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -395,7 +395,7 @@ function StatusTimelineCard({ ticket, canComment, onComment }: {
             onPress={onComment}
             activeOpacity={0.7}
           >
-            <Text style={styles.addCommentText}>+ Tambah Catatan</Text>
+            <Text style={styles.addCommentText}>+ Add Note</Text>
           </TouchableOpacity>
         </>
       )}

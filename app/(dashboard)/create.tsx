@@ -226,7 +226,6 @@ function Step2IssueType({ issueTypes, selectedIssueType, onSelectIssueType }: {
 }) {
   return (
     <ScrollView contentContainerStyle={styles.stepContent} showsVerticalScrollIndicator={false}>
-      <Text style={styles.sectionLabel}>Issue Type</Text>
       {issueTypes.map((item) => {
         const isSelected  = selectedIssueType?.id === item.id
         const categoryKey = resolveCategoryKey(item.name)
@@ -311,7 +310,7 @@ function Step3Details({ places, placesByBuilding, selectedPlaceId, onSelectPlace
         onSelectPlace={onSelectPlace}
       />
 
-      <Text style={[styles.fieldLabel, { marginTop: spacing.lg }]}>Additional Detail</Text>
+      <Text style={[styles.fieldLabel, { marginTop: spacing.lg }]}>Issue Title</Text>
       <TextInput
         style={styles.textInput}
         placeholder="e.g. B513, 3rd floor restroom, outdoor area"

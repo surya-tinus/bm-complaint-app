@@ -31,10 +31,10 @@ function formatTimestamp(raw: string | undefined | null): string {
   const hours = diff / (1000 * 60 * 60)
   if (hours < 1) {
     const mins = Math.floor(diff / (1000 * 60))
-    return `${mins} menit lalu`
+    return `${mins} minutes ago`
   }
-  if (hours < 24) return `${Math.floor(hours)} jam lalu`
-  return date.toLocaleDateString('id-ID', {
+  if (hours < 24) return `${Math.floor(hours)} hours ago`
+  return date.toLocaleDateString('en-GB', {
     day: 'numeric', month: 'short', year: 'numeric',
   })
 }
@@ -144,14 +144,14 @@ export function TicketCard({
             onPress={() => onReject?.(ticket)}
             activeOpacity={0.8}
           >
-            <Text style={styles.btnRejectText}>Tolak</Text>
+            <Text style={styles.btnRejectText}>Reject</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.btnAccept}
             onPress={() => onAccept?.(ticket)}
             activeOpacity={0.8}
           >
-            <Text style={styles.btnAcceptText}>Terima</Text>
+            <Text style={styles.btnAcceptText}>Accept</Text>
           </TouchableOpacity>
         </View>
       )}

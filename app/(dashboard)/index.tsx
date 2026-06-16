@@ -78,6 +78,9 @@ const rejectMutation = useMutation({
     setSelectedTicket(null)
     queryClient.invalidateQueries({ queryKey: ['tickets'] })
   },
+  onError: (err: any) => {
+    console.log('REJECT ERROR:', err?.response?.status, err?.response?.data, err?.message)
+  },
 })
 
 const handleAccept = (ticket: any) => {
