@@ -12,7 +12,7 @@ import {
   ActivityIndicator,
 } from 'react-native'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { claimTicket, rejectTicket } from '@/services/ticket.service'
+import { claimTicket, requestUnassign } from '@/services/ticket.service'
 import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { SearchBar } from '@/components/ui/SearchBar'
@@ -22,7 +22,7 @@ import { DashboardSkeleton } from '@/components/ui/Skeleton'
 import { useDashboard } from '@/features/dashboard/hooks/useDashboard'
 import { useAuthStore } from '@/store/auth.store'
 import { colors, spacing, typography, radius, screenPadding } from '@/constants'
-import { ClockCounterClockwise } from 'phosphor-react-native'
+import { ClockCounterClockwise, ClipboardText} from 'phosphor-react-native'
 
 export default function DashboardScreen() {
   const [rejectModalVisible, setRejectModalVisible] = useState(false)
@@ -71,7 +71,7 @@ const claimMutation = useMutation({
 })
 
 const rejectMutation = useMutation({
-  mutationFn: ({ id, reason }: { id: string; reason: string }) => rejectTicket(id, reason),
+  mutationFn: ({ id, reason }: { id: string; reason: string }) => requestUnassign(id, reason),
   onSuccess: () => {
     setRejectModalVisible(false)
     setRejectReason('')
@@ -79,7 +79,7 @@ const rejectMutation = useMutation({
     queryClient.invalidateQueries({ queryKey: ['tickets'] })
   },
   onError: (err: any) => {
-    console.log('REJECT ERROR:', err?.response?.status, err?.response?.data, err?.message)
+    console.log('REQUEST UNASSIGN ERROR:', err?.response?.status, err?.response?.data, err?.message)
   },
 })
 
@@ -125,6 +125,15 @@ const handleConfirmReject = () => {
     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
   >
     <ClockCounterClockwise size={20} color={colors.textOnBrand} weight="regular" />
+  </TouchableOpacity>
+)}
+{role === 'Admin' && (
+  <TouchableOpacity
+    style={styles.backBtn}
+    onPress={() => router.push('/(dashboard)/requests')}
+    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+  >
+    <ClipboardText size={20} color={colors.textOnBrand} weight="regular" />
   </TouchableOpacity>
 )}
       </View>

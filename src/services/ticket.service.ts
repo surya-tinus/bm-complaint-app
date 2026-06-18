@@ -260,3 +260,46 @@ export const commentTicket = async (id: string, comment: string) => {
   const { data } = await api.post(`/tickets/${id}/comment`, { comment })
   return data
 }
+
+// ─── REQUEST UNASSIGN (Staff) ──────────────────────────────
+
+export const requestUnassign = async (id: string, reason: string) => {
+  if (config.USE_MOCK) { await delay(800); return }
+  const { data } = await api.post(`/tickets/${id}/request-unassign`, { reason })
+  return data
+}
+
+// ─── GET PENDING REQUESTS (Admin) ─────────────────────────
+
+export const getPendingRequests = async () => {
+  if (config.USE_MOCK) { await delay(600); return [] }
+  const { data } = await api.get('/tickets/requests/pending')
+  return data.data as {
+    id: number
+    request_type: string
+    description: string
+    status: string
+    created_at: string
+    requested_by_name: string
+    requested_by_id: string
+    ticket_id: number
+    short_description: string
+    ticket_status: string
+  }[]
+}
+
+// ─── APPROVE UNASSIGN REQUEST (Admin) ─────────────────────
+
+export const approveUnassignRequest = async (requestId: number, comment?: string) => {
+  if (config.USE_MOCK) { await delay(800); return }
+  const { data } = await api.post(`/tickets/requests/${requestId}/approve`, { comment })
+  return data
+}
+
+// ─── REJECT UNASSIGN REQUEST (Admin) ──────────────────────
+
+export const rejectUnassignRequest = async (requestId: number, comment?: string) => {
+  if (config.USE_MOCK) { await delay(800); return }
+  const { data } = await api.post(`/tickets/requests/${requestId}/reject`, { comment })
+  return data
+}
