@@ -19,6 +19,7 @@ import type { TicketAction } from '@/features/dashboard/hooks/useTicketDetail'
 import { TicketTypeIcon } from '@/components/ui/TicketTypeIcon'
 import { resolveCategoryKey } from '@/utils/resolveCategoryKey'
 import { CATEGORY_TO_TYPE } from '@/constants'
+import { ThumbsReview, ThumbsFloatingBanner} from '@/components/ui/ThumbsReview'
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
 
@@ -45,6 +46,10 @@ export default function TicketDetailScreen() {
     actionModalVisible, setActionModalVisible,
     pendingAction, actionComment, setActionComment,
     triggerAction, confirmAction, isActioning,
+    canReview,
+  thumbsReview,
+  submitThumbsReview,
+  isSubmittingThumbsReview,
   } = useTicketDetail(id, externalToken ?? undefined)
 
   const hasActionBar = canCancel || canClaim || canResolve || canApprove || canHold || canContinue || canComment
@@ -93,7 +98,12 @@ export default function TicketDetailScreen() {
       <Header id={id} onBack={() => router.back()} topInset={insets.top} />
       <ScrollView
         style={styles.body}
-        contentContainerStyle={[styles.scrollContent, hasActionBar && { paddingBottom: insets.bottom + 100 }]}
+        contentContainerStyle={[
+  styles.scrollContent,
+  (hasActionBar || canReview || thumbsReview !== null) && {
+    paddingBottom: insets.bottom + 160
+  },
+]}
         showsVerticalScrollIndicator={false}
       >
         <TicketInfoCard
@@ -110,8 +120,24 @@ export default function TicketDetailScreen() {
   onComment={() => triggerAction('comment')}
 />
         <AssignedStaffCard ticket={ticket} />
+
+        
       </ScrollView>
       
+      {/* Thumbs floating banner — hanya untuk User, status Resolved */}
+{(canReview || thumbsReview !== null) && (
+  <ThumbsFloatingBanner
+    canReview={canReview}
+    thumbsReview={thumbsReview}
+    isSubmitting={isSubmittingThumbsReview}
+    onSubmit={submitThumbsReview}
+    bottomOffset={
+      hasActionBar
+        ? insets.bottom + 80   // ada bottom bar di bawahnya
+        : insets.bottom + 16   // tidak ada bottom bar
+    }
+  />
+)}
 
      {canCancel && (
         <View style={[styles.cancelBar, { paddingBottom: insets.bottom + 12 }]}>
@@ -553,6 +579,80 @@ function ActionModal({ visible, action, comment, onChangeComment, onCancel, onCo
     </Modal>
   )
 }
+
+const bannerStyles = StyleSheet.create({
+  container: {
+    position: 'absolute',
+    left: screenPadding,
+    right: screenPadding,
+    backgroundColor: colors.bgCard,
+    borderRadius: radius.card,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: -4 },
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+  },
+  question: {
+    fontSize: typography.sizes.label,
+    fontFamily: typography.fonts.medium,
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
+    textAlign: 'center',
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    minHeight: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  btn: {
+    flex: 1,
+    height: 40,
+    borderRadius: radius.button,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  btnYes: {
+    backgroundColor: colors.status.resolved.bg,
+    borderWidth: 1,
+    borderColor: colors.status.resolved.accent ?? colors.borderDefault,
+  },
+  btnNo: {
+    backgroundColor: colors.status.unresolved.bg,
+    borderWidth: 1,
+    borderColor: colors.status.unresolved.accent ?? colors.borderDefault,
+  },
+  btnYesText: {
+    fontSize: typography.sizes.label,
+    fontFamily: typography.fonts.medium,
+    color: colors.status.resolved.text,
+  },
+  btnNoText: {
+    fontSize: typography.sizes.label,
+    fontFamily: typography.fonts.medium,
+    color: colors.status.unresolved.text,
+  },
+  resultRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  resultIcon: {
+    fontSize: 18,
+  },
+  resultText: {
+    flex: 1,
+    fontSize: typography.sizes.label,
+    fontFamily: typography.fonts.regular,
+    lineHeight: 20,
+  },
+})
 
 // ─── Styles ────────────────────────────────────────────────
 

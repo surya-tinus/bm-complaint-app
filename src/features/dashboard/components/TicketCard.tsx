@@ -139,21 +139,10 @@ export function TicketCard({
       {/* ── Action buttons (from v2) ── */}
       {section === 'assigned' && (
         <View style={styles.actionRow}>
-          <TouchableOpacity
-            style={styles.btnReject}
-            onPress={() => onReject?.(ticket)}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.btnRejectText}>Reject</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.btnAccept}
-            onPress={() => onAccept?.(ticket)}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.btnAcceptText}>Accept</Text>
-          </TouchableOpacity>
-        </View>
+  <TouchableOpacity style={styles.btnAccept} onPress={() => onAccept?.(ticket)} activeOpacity={0.8}>
+    <Text style={styles.btnAcceptText}>Accept</Text>
+  </TouchableOpacity>
+</View>
       )}
 
       {section === 'active' && (
@@ -163,7 +152,7 @@ export function TicketCard({
             onPress={() => onUpdateStatus?.(ticket)}
             activeOpacity={0.8}
           >
-            <Text style={styles.btnUpdateStatusText}>Perbarui Status</Text>
+            <Text style={styles.btnUpdateStatusText}>Update Status</Text>
           </TouchableOpacity>
         </View>
       )}

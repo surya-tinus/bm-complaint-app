@@ -11,6 +11,7 @@ import {
   holdTicket,
   continueTicket,
   commentTicket, 
+  reviewThumbs,
 } from '@/services/ticket.service'
 import { useAuthStore } from '@/store/auth.store'
 import { Alert } from 'react-native'
@@ -138,6 +139,17 @@ export const useTicketDetail = (id: string, externalToken?: string) => {
 },
 })
 
+// ─── Thumbs Review (User) ─────────────────────────────────
+const thumbsMutation = useMutation({
+  mutationFn: (thumbs: boolean) => reviewThumbs(id, thumbs),
+  onSuccess: () => {
+    invalidate()
+  },
+  onError: (error: any) => {
+    Alert.alert('Gagal', error?.response?.data?.message ?? 'Terjadi kesalahan')
+  },
+})
+
   // ─── Trigger dengan guard ─────────────────────────────
   const triggerAction = (action: TicketAction) => {
     if (action === 'claim' && role === 'Staff' && dept !== ticketDept) {
@@ -190,11 +202,11 @@ export const useTicketDetail = (id: string, externalToken?: string) => {
       dept === ticketDept &&
       status === 'Approved'
 
-  // Staff: resolve — hanya assigned staff, status In Progress atau On Hold
+  // Staff: resolve — hanya assigned staff, status In Progress
   const canResolve =
-    role === 'Staff' &&
-    assignedStaffEmplid === user?.emplid &&
-    ['In Progress', 'On Hold'].includes(status ?? '')
+  role === 'Staff' &&
+  assignedStaffEmplid === user?.emplid &&
+  status === 'In Progress'
 
   // Admin: approve tiket Pending
   const canApprove =
@@ -229,6 +241,11 @@ export const useTicketDetail = (id: string, externalToken?: string) => {
     role === 'Admin' ||
     (role === 'Staff' && assignedStaffEmplid === user?.emplid)
   )
+
+  const canReview =
+  role === 'User' &&
+  status === 'Resolved' &&
+  query.data?.user_thumbs_review === null
 
   console.log('ticket_owner_id:', query.data?.ticket_owner_id)
 console.log('user emplid:', user?.emplid)
@@ -276,5 +293,12 @@ console.log('user emplid:', user?.emplid)
     setAdditionalDetailExpanded,
     attachmentsExpanded,
     setAttachmentsExpanded,
+
+    // Thumbs review
+canReview,
+thumbsReview: query.data?.user_thumbs_review as boolean | null,
+submitThumbsReview: thumbsMutation.mutate,
+isSubmittingThumbsReview: thumbsMutation.isPending,
+
   }
 }

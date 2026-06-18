@@ -1,18 +1,16 @@
-import React, { useState } from 'react'
+//app/(dashboard)/index.tsx
+import React from 'react'
 import {
   View,
   Text,
   FlatList,
-  ScrollView,    
+  ScrollView,
   TouchableOpacity,
   StyleSheet,
   StatusBar,
-  TextInput,
-  Modal,
-  ActivityIndicator,
 } from 'react-native'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { claimTicket, requestUnassign } from '@/services/ticket.service'
+import { claimTicket } from '@/services/ticket.service'
 import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { SearchBar } from '@/components/ui/SearchBar'
@@ -22,12 +20,9 @@ import { DashboardSkeleton } from '@/components/ui/Skeleton'
 import { useDashboard } from '@/features/dashboard/hooks/useDashboard'
 import { useAuthStore } from '@/store/auth.store'
 import { colors, spacing, typography, radius, screenPadding } from '@/constants'
-import { ClockCounterClockwise, ClipboardText} from 'phosphor-react-native'
+import { ClockCounterClockwise, ClipboardText } from 'phosphor-react-native'
 
 export default function DashboardScreen() {
-  const [rejectModalVisible, setRejectModalVisible] = useState(false)
-const [rejectReason, setRejectReason] = useState('')
-const [selectedTicket, setSelectedTicket] = useState<any>(null)
   const clearAuth = useAuthStore((s) => s.clearAuth)
   const insets = useSafeAreaInsets()
   const router = useRouter()
@@ -65,38 +60,18 @@ const [selectedTicket, setSelectedTicket] = useState<any>(null)
 
   const queryClient = useQueryClient()
 
-const claimMutation = useMutation({
-  mutationFn: (ticketId: string) => claimTicket(ticketId),
-  onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tickets'] }),
-})
+  const claimMutation = useMutation({
+    mutationFn: (ticketId: string) => claimTicket(ticketId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tickets'] }),
+    onError: (err: any) => {
+      console.log('CLAIM ERROR:', err?.response?.status, err?.response?.data, err?.message)
+    },
+  })
 
-const rejectMutation = useMutation({
-  mutationFn: ({ id, reason }: { id: string; reason: string }) => requestUnassign(id, reason),
-  onSuccess: () => {
-    setRejectModalVisible(false)
-    setRejectReason('')
-    setSelectedTicket(null)
-    queryClient.invalidateQueries({ queryKey: ['tickets'] })
-  },
-  onError: (err: any) => {
-    console.log('REQUEST UNASSIGN ERROR:', err?.response?.status, err?.response?.data, err?.message)
-  },
-})
+  const handleAccept = (ticket: any) => {
+    claimMutation.mutate(ticket.id)
+  }
 
-const handleAccept = (ticket: any) => {
-  claimMutation.mutate(ticket.id)
-}
-
-const handleReject = (ticket: any) => {
-  setSelectedTicket(ticket)
-  setRejectReason('')
-  setRejectModalVisible(true)
-}
-
-const handleConfirmReject = () => {
-  if (!rejectReason.trim() || !selectedTicket) return
-  rejectMutation.mutate({ id: selectedTicket.id, reason: rejectReason })
-}
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <StatusBar barStyle="light-content" backgroundColor={colors.brand} />
@@ -115,27 +90,27 @@ const handleConfirmReject = () => {
             {isStaff ? 'Home' : 'My Tickets'}
           </Text>
           <Text style={styles.appBarSubtitle}>
-            {isStaff ? 'Summary of today\'s activity' : 'Track your ticket status here'}
+            {isStaff ? "Summary of today's activity" : 'Track your ticket status here'}
           </Text>
         </View>
         {isStaff && (
-  <TouchableOpacity
-    style={styles.backBtn}
-    onPress={() => router.push('/(dashboard)/history')}
-    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-  >
-    <ClockCounterClockwise size={20} color={colors.textOnBrand} weight="regular" />
-  </TouchableOpacity>
-)}
-{role === 'Admin' && (
-  <TouchableOpacity
-    style={styles.backBtn}
-    onPress={() => router.push('/(dashboard)/requests')}
-    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-  >
-    <ClipboardText size={20} color={colors.textOnBrand} weight="regular" />
-  </TouchableOpacity>
-)}
+          <TouchableOpacity
+            style={styles.backBtn}
+            onPress={() => router.push('/(dashboard)/history')}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <ClockCounterClockwise size={20} color={colors.textOnBrand} weight="regular" />
+          </TouchableOpacity>
+        )}
+        {/* {role === 'Admin' && (
+          <TouchableOpacity
+            style={styles.backBtn}
+            onPress={() => router.push('/(dashboard)/requests')}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <ClipboardText size={20} color={colors.textOnBrand} weight="regular" />
+          </TouchableOpacity>
+        )} */}
       </View>
 
       {/* Body */}
@@ -156,72 +131,67 @@ const handleConfirmReject = () => {
           </>
         ) : (
           <FlatList
-  data={isStaff ? assignedTickets : filteredTickets}  // ← was activeTickets
-  keyExtractor={(item) => String(item.id)}
-  renderItem={({ item }) => (
-    <TicketCard
-      ticket={item}
-      onPress={handleTicketPress}
-      role={isStaff ? 'staff' : 'user'}
-      section={isStaff ? 'assigned' : 'user'}          // ← was 'active'
-      onAccept={handleAccept}
-      onReject={handleReject}
-    />
-  )}
-  contentContainerStyle={[
-    styles.listContent,
-    { paddingBottom: insets.bottom + 100 },
-  ]}
-  showsVerticalScrollIndicator={false}
-  ListHeaderComponent={
-    <>
-      <View style={styles.searchArea}>
-        <SearchBar
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          placeholder="Search by ticket ID or issue..."
-        />
-        {!isStaff && (
-          <FilterChips activeFilter={activeFilter} onFilterChange={setActiveFilter} />
+            data={isStaff ? assignedTickets : filteredTickets}
+            keyExtractor={(item) => String(item.id)}
+            renderItem={({ item }) => (
+              <TicketCard
+                ticket={item}
+                onPress={handleTicketPress}
+                role={isStaff ? 'staff' : 'user'}
+                section={isStaff ? 'assigned' : 'user'}
+                onAccept={handleAccept}
+              />
+            )}
+            contentContainerStyle={[
+              styles.listContent,
+              { paddingBottom: insets.bottom + 100 },
+            ]}
+            showsVerticalScrollIndicator={false}
+            ListHeaderComponent={
+              <>
+                <View style={styles.searchArea}>
+                  <SearchBar
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                    placeholder="Search by ticket ID or issue..."
+                  />
+                  {!isStaff && (
+                    <FilterChips activeFilter={activeFilter} onFilterChange={setActiveFilter} />
+                  )}
+                </View>
+
+                {isStaff && stats && (
+                  <StaffOverview stats={stats} />
+                )}
+
+                {isStaff && (
+                  <ActiveSection
+                    tickets={activeTickets}
+                    onPress={handleTicketPress}
+                    onUpdateStatus={handleUpdateStatus}
+                  />
+                )}
+
+                {isStaff && (
+                  <SectionLabel label="New Tickets" />
+                )}
+              </>
+            }
+            ListEmptyComponent={
+              <EmptyState hasQuery={!!searchQuery} isStaff={isStaff} />
+            }
+            ListFooterComponent={
+              assignedTickets.length > 0 ? (
+                <View style={styles.listFooter}>
+                  <View style={styles.listFooterLine} />
+                  <Text style={styles.listFooterText}>All tickets have been loaded</Text>
+                  <View style={styles.listFooterLine} />
+                </View>
+              ) : null
+            }
+          />
         )}
       </View>
-
-      {isStaff && stats && (
-        <StaffOverview stats={stats} />
-      )}
-
-      {/* Active Tickets — horizontal scroll, muncul dulu */}
-      {isStaff && (
-        <ActiveSection
-          tickets={activeTickets}
-          onPress={handleTicketPress}
-          onUpdateStatus={handleUpdateStatus}
-        />
-      )}
-
-      {/* New Tickets — label sebelum FlatList body */}
-      {isStaff && (
-        <SectionLabel label="New Tickets" />
-      )}
-    </>
-  }
-  ListEmptyComponent={
-    <EmptyState hasQuery={!!searchQuery} isStaff={isStaff} />
-  }
-  ListFooterComponent={
-    assignedTickets.length > 0 ? (
-      <View style={styles.listFooter}>
-        <View style={styles.listFooterLine} />
-        <Text style={styles.listFooterText}>All tickets have been loaded</Text>
-        <View style={styles.listFooterLine} />
-      </View>
-    ) : null
-  }
-/>
-      
-        )}
-      </View>
-      
 
       {/* FAB — user only */}
       {!isStaff && role !== 'Admin' && (
@@ -233,52 +203,6 @@ const handleConfirmReject = () => {
           <Text style={styles.fabIcon}>+</Text>
         </TouchableOpacity>
       )}
-
-      {/* Reject Modal */}
-<Modal visible={rejectModalVisible} transparent animationType="fade">
-  <View style={styles.modalOverlay}>
-    <View style={styles.modalCard}>
-      <Text style={styles.modalTitle}>Reject this ticket?</Text>
-      <Text style={styles.modalSubtitle}>
-        Ticket #{selectedTicket?.id} · {selectedTicket?.shortDescription}
-      </Text>
-
-      <TextInput
-        style={styles.commentInput}
-        placeholder="Reason for rejection..."
-        placeholderTextColor={colors.textMuted}
-        value={rejectReason}
-        onChangeText={setRejectReason}
-        multiline
-        numberOfLines={3}
-        textAlignVertical="top"
-      />
-      {!rejectReason.trim() && rejectReason.length > 0 && (
-        <Text style={styles.commentRequired}>Reason is required</Text>
-      )}
-
-      <View style={styles.modalButtons}>
-        <TouchableOpacity
-          style={styles.modalSecondaryBtn}
-          onPress={() => setRejectModalVisible(false)}
-          disabled={rejectMutation.isPending}
-        >
-          <Text style={styles.modalSecondaryText}>Cancel</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.modalPrimaryBtn, { backgroundColor: '#DC2626', opacity: !rejectReason.trim() ? 0.4 : 1 }]}
-          onPress={handleConfirmReject}
-          disabled={!rejectReason.trim() || rejectMutation.isPending}
-        >
-          {rejectMutation.isPending
-            ? <ActivityIndicator color="#fff" size="small" />
-            : <Text style={styles.modalPrimaryText}>Reject</Text>
-          }
-        </TouchableOpacity>
-      </View>
-    </View>
-  </View>
-</Modal>
     </View>
   )
 }
@@ -293,9 +217,9 @@ function StaffOverview({
   return (
     <View style={styles.overviewGrid}>
       <View style={[styles.overviewTile, { backgroundColor: colors.brandDim, borderWidth: 0.5, borderColor: colors.borderStrong }]}>
-  <Text style={[styles.overviewNum, { color: colors.brandText }]}>{stats.assigned}</Text>
-  <Text style={[styles.overviewLabel, { color: colors.textMuted }]}>New Tickets</Text>
-</View>
+        <Text style={[styles.overviewNum, { color: colors.brandText }]}>{stats.assigned}</Text>
+        <Text style={[styles.overviewLabel, { color: colors.textMuted }]}>New Tickets</Text>
+      </View>
       <View style={[styles.overviewTile, { backgroundColor: colors.brandDim }]}>
         <Text style={[styles.overviewNum, { color: colors.brandText }]}>{stats.active}</Text>
         <Text style={[styles.overviewLabel, { color: colors.textMuted }]}>Active</Text>
@@ -315,6 +239,7 @@ function StaffOverview({
     </View>
   )
 }
+
 // ─── Active Section (horizontal scroll) ───────────────────
 
 function ActiveSection({
@@ -356,37 +281,6 @@ function ActiveSection({
   )
 }
 
-// ─── Assigned Section ──────────────────────────────────────
-
-function AssignedSection({
-  tickets,
-  onPress,
-  onAccept,
-  onReject,
-}: {
-  tickets: any[]
-  onPress: (ticket: any) => void
-  onAccept: (ticket: any) => void
-  onReject: (ticket: any) => void
-}) {
-  return (
-    <View style={styles.sectionWrap}>
-      <SectionLabel label="New Tickets" />
-      {tickets.map((ticket) => (
-        <TicketCard
-          key={ticket.id}
-          ticket={ticket}
-          onPress={onPress}
-          role="staff"
-          section="assigned"
-          onAccept={onAccept}
-          onReject={onReject}
-        />
-      ))}
-    </View>
-  )
-}
-
 // ─── Section Label ─────────────────────────────────────────
 
 function SectionLabel({ label }: { label: string }) {
@@ -416,7 +310,7 @@ function EmptyState({ hasQuery, isStaff }: { hasQuery: boolean; isStaff: boolean
   const subtitle = hasQuery
     ? 'Try a different keyword or check the ticket number.'
     : isStaff
-      ? 'Spotted an issue nearby? Tap + to report it.'
+      ? 'No new tickets assigned to your department.'
       : 'No tickets are currently being handled.'
 
   return (
@@ -467,23 +361,17 @@ const styles = StyleSheet.create({
     fontFamily: typography.fonts.regular,
     marginTop: 2,
   },
-
   body: {
     flex: 1,
     backgroundColor: colors.bgBase,
   },
-
   searchArea: {
-    
     paddingTop: spacing.lg,
     paddingBottom: spacing.sm,
   },
-
   listContent: {
     paddingHorizontal: screenPadding,
   },
-
-  // Overview tiles
   overviewGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -513,7 +401,6 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.55)',
     marginTop: 4,
   },
-
   sectionWrap: {
     marginBottom: spacing.sm,
   },
@@ -526,8 +413,6 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
     marginTop: spacing.sm,
   },
-
-  // Error / empty
   centered: {
     flex: 1,
     justifyContent: 'center',
@@ -564,8 +449,6 @@ const styles = StyleSheet.create({
     fontFamily: typography.fonts.medium,
     fontSize: typography.sizes.button,
   },
-
-  // FAB
   fab: {
     position: 'absolute',
     right: screenPadding,
@@ -585,71 +468,31 @@ const styles = StyleSheet.create({
     fontFamily: typography.fonts.light,
   },
   listFooter: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  gap: spacing.sm,
-  paddingVertical: spacing.xl,
-  paddingHorizontal: spacing.md,
-},
-listFooterLine: {
-  flex: 1,
-  height: 0.5,
-  backgroundColor: colors.borderDefault,
-},
-listFooterText: {
-  fontSize: typography.sizes.microcopy,
-  fontFamily: typography.fonts.regular,
-  color: colors.textMuted,
-},
-activeScrollContent: {
-  paddingRight: screenPadding,
-  gap: spacing.sm,
-},
-activeCardWrap: {
-  width: 280,
-},
-activeEmpty: {
-  paddingVertical: spacing.md,
-  paddingHorizontal: spacing.sm,
-},
-modalOverlay: {
-  flex: 1,
-  backgroundColor: colors.bgOverlay,
-  justifyContent: 'center',         // ← center seperti pattern yang ada
-  alignItems: 'center',
-  paddingHorizontal: 32,
-},
-modalTitle: {
-  fontSize: typography.sizes.cardTitle,
-  fontFamily: typography.fonts.bold,
-  color: colors.textPrimary,
-},
-modalSubtitle: {
-  fontSize: typography.sizes.body,
-  fontFamily: typography.fonts.regular,
-  color: colors.textSecondary,
-  paddingTop: spacing.sm,
-  paddingBottom: spacing.sm,
-},
-commentRequired:    { fontSize: typography.sizes.microcopy, fontFamily: typography.fonts.regular, color: '#DC2626', marginBottom: spacing.md },
-  modalButtons:       { flexDirection: 'row', gap: spacing.md },
-  modalSecondaryBtn:  { flex: 1, borderWidth: 1.5, borderColor: colors.borderStrong, borderRadius: radius.button, paddingVertical: 13, alignItems: 'center' },
-  modalSecondaryText: { fontSize: typography.sizes.button, fontFamily: typography.fonts.medium, color: colors.textPrimary },
-  modalPrimaryBtn:    { flex: 1, borderRadius: radius.button, paddingVertical: 13, alignItems: 'center' },
-  modalPrimaryText:   { fontSize: typography.sizes.button, fontFamily: typography.fonts.medium, color: colors.textOnBrand },
-  modalCard:          { backgroundColor: colors.bgCard, borderRadius: radius.modal, padding: spacing.xl, width: '100%' },
-  commentInput:       { backgroundColor: colors.bgElevated, borderWidth: 1, borderColor: colors.borderDefault, borderRadius: radius.input, paddingHorizontal: spacing.lg, paddingVertical: spacing.md, fontSize: typography.sizes.body, fontFamily: typography.fonts.regular, color: colors.textPrimary, minHeight: 80, marginBottom: spacing.sm },
-
-  historyBtn: {
-  paddingHorizontal: spacing.md,
-  paddingVertical: spacing.xs,
-  borderRadius: radius.button,
-  borderWidth: 1,
-  borderColor: 'rgba(255,255,255,0.3)',
-},
-historyBtnText: {
-  color: colors.textOnBrand,
-  fontSize: typography.sizes.body,
-  fontFamily: typography.fonts.medium,
-},
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.xl,
+    paddingHorizontal: spacing.md,
+  },
+  listFooterLine: {
+    flex: 1,
+    height: 0.5,
+    backgroundColor: colors.borderDefault,
+  },
+  listFooterText: {
+    fontSize: typography.sizes.microcopy,
+    fontFamily: typography.fonts.regular,
+    color: colors.textMuted,
+  },
+  activeScrollContent: {
+    paddingRight: screenPadding,
+    gap: spacing.sm,
+  },
+  activeCardWrap: {
+    width: 280,
+  },
+  activeEmpty: {
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
+  },
 })
