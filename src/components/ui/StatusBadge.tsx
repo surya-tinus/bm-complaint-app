@@ -11,6 +11,7 @@ import {
   ProhibitInsetIcon,
   SealCheckIcon,
   LockSimpleIcon,
+  CalendarIcon
 } from 'phosphor-react-native'
 import { colors, typography, radius } from '@/constants'
 import type { StatusKey } from '@/constants'
@@ -27,6 +28,7 @@ const STATUS_LABEL: Record<StatusKey, { user: string; staff: string }> = {
   rejected:    { user: 'Revision',    staff: 'Rejected'    },
   approved:    { user: 'Approved',    staff: 'Approved'    },
   auto_closed: { user: 'Closed',      staff: 'Auto Closed' },
+  scheduled: { user: 'Scheduled', staff: 'Scheduled' },
 }
 
 type PhosphorIcon = React.ComponentType<{ size: number; color: string; weight: 'bold' }>
@@ -42,6 +44,7 @@ const STATUS_ICONS: Record<StatusKey, PhosphorIcon> = {
   rejected:    XCircleIcon,
   approved:    SealCheckIcon,
   auto_closed: LockSimpleIcon,
+  scheduled: CalendarIcon,
 }
 
 interface Props {

@@ -73,10 +73,12 @@ export const getTicketById = async (id: string, internalToken?: string) => {
     return ticket
   }
 
-  const { data } = await api.get(`/tickets/${id}`, {
-    headers: internalToken ? { 'x-internal-token': internalToken } : {},
-  })
-  const t = data.data
+  try {
+    const { data } = await api.get(`/tickets/${id}`, {
+      headers: internalToken ? { 'x-internal-token': internalToken } : {},
+    })
+    console.log('getTicketById raw response:', JSON.stringify(data?.data?.status_name), 'schedule:', JSON.stringify(data?.data?.schedule))
+    const t = data.data
 
   const attachments = (t.history ?? []).flatMap((h: any, histIndex: number) =>
     (h.attachments ?? []).map((att: any, attIndex: number) => ({
@@ -132,9 +134,13 @@ const historyWithComment = t.history?.find((h: any) =>
     statusLastUpdated: new Date(t.updated_at).toLocaleDateString('id-ID'),
     timeline,
     attachments,
+    schedule: t.schedule ?? null,
+  }
+} catch (err: any) {
+    console.log('getTicketById ERROR:', err?.response?.status, JSON.stringify(err?.response?.data), err?.message)
+    throw err
   }
 }
-
 // ─── CREATE TICKET ─────────────────────────────────────────
 
 export const createTicket = async (payload: {
@@ -266,5 +272,18 @@ export const commentTicket = async (id: string, comment: string) => {
 export const reviewThumbs = async (id: string, thumbs: boolean) => {
   if (config.USE_MOCK) { await delay(800); return { user_thumbs_review: thumbs } }
   const { data } = await api.post(`/tickets/${id}/thumbs`, { user_thumbs_review: thumbs })
+  return data
+}
+
+// ─── SCHEDULE TICKET (Admin) ───────────────────────────────
+
+export const scheduleTicket = async (id: string, payload: {
+  scheduled_date: string   // 'YYYY-MM-DD'
+  scheduled_start?: string // 'HH:MM'
+  scheduled_end?: string   // 'HH:MM'
+  notes?: string
+}) => {
+  if (config.USE_MOCK) { await delay(800); return }
+  const { data } = await api.post(`/tickets/${id}/schedule`, payload)
   return data
 }

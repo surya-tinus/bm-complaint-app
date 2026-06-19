@@ -20,6 +20,7 @@ import { TicketTypeIcon } from '@/components/ui/TicketTypeIcon'
 import { resolveCategoryKey } from '@/utils/resolveCategoryKey'
 import { CATEGORY_TO_TYPE } from '@/constants'
 import { ThumbsReview, ThumbsFloatingBanner} from '@/components/ui/ThumbsReview'
+import { ScheduleSheet } from '@/features/dashboard/components/ScheduleSheet'
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
 
@@ -50,9 +51,14 @@ export default function TicketDetailScreen() {
   thumbsReview,
   submitThumbsReview,
   isSubmittingThumbsReview,
+  canSchedule,
+scheduleSheetVisible,
+setScheduleSheetVisible,
+scheduleTicket,
+isScheduling,
   } = useTicketDetail(id, externalToken ?? undefined)
 
-  const hasActionBar = canCancel || canClaim || canResolve || canApprove || canHold || canContinue || canComment
+  const hasActionBar = canCancel || canClaim || canResolve || canApprove || canHold || canContinue || canComment || canSchedule 
 
   if (isLoading) {
     return (
@@ -90,7 +96,7 @@ export default function TicketDetailScreen() {
       </View>
     )
   }
-
+  console.log('canSchedule:', canSchedule)
   console.log('rendering bottom bar, canApprove:', canApprove, 'canCancel:', canCancel)
   return (
     <View style={styles.safeArea}>
@@ -114,6 +120,8 @@ export default function TicketDetailScreen() {
           attachmentsExpanded={attachmentsExpanded}
           onToggleAttachments={() => setAttachmentsExpanded(!attachmentsExpanded)}
         />
+{ticket.schedule && <ScheduleInfoCard ticket={ticket} />}
+
         <StatusTimelineCard
   ticket={ticket}
   canComment={canComment}
@@ -152,23 +160,40 @@ export default function TicketDetailScreen() {
       )}
 
       {/* Staff action bar — terpisah dari cancel */}
-      {(canHold || canContinue || canClaim || canResolve || canApprove) && (
+      {(canHold || canContinue || canClaim || canResolve || canApprove || canSchedule) && (
         <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12 }]}>
-          {(canHold || canContinue || canClaim || canResolve) && (
+          {(canHold || canContinue || canClaim || canResolve || canApprove || canSchedule) && (
             <View style={[styles.staffActionRow, { marginBottom: spacing.sm }]}>
               {canHold     && <TouchableOpacity style={styles.btnOutline}  onPress={() => triggerAction('hold')}     activeOpacity={0.85}><Text style={styles.btnOutlineText}>Hold</Text></TouchableOpacity>}
               {canContinue && <TouchableOpacity style={styles.btnPrimary}  onPress={() => triggerAction('continue')} activeOpacity={0.85}><Text style={styles.btnPrimaryText}>Continue</Text></TouchableOpacity>}
               {canClaim    && <TouchableOpacity style={styles.btnPrimary}  onPress={() => triggerAction('claim')}    activeOpacity={0.85}><Text style={styles.btnPrimaryText}>Accept</Text></TouchableOpacity>}
               {canResolve  && <TouchableOpacity style={styles.btnPrimary}  onPress={() => triggerAction('resolve')}  activeOpacity={0.85}><Text style={styles.btnPrimaryText}>Resolve</Text></TouchableOpacity>}
+              
             </View>
           )}
-          {canApprove && (
-            <View style={styles.staffActionRow}>
-              <TouchableOpacity style={styles.btnPrimary} onPress={() => triggerAction('approve')} activeOpacity={0.85}>
-                <Text style={styles.btnPrimaryText}>Approve</Text>
-              </TouchableOpacity>
-            </View>
-          )}
+          {(canApprove || canSchedule) && (
+  <View style={styles.staffActionRow}>
+    {canApprove && (
+      <TouchableOpacity
+        style={styles.btnPrimary}
+        onPress={() => triggerAction('approve')}
+        activeOpacity={0.85}
+      >
+        <Text style={styles.btnPrimaryText}>Approve</Text>
+      </TouchableOpacity>
+    )}
+    {canSchedule && (
+      <TouchableOpacity
+      
+        style={styles.btnPrimary}
+        onPress={() => setScheduleSheetVisible(true)}
+        activeOpacity={0.85}
+      >
+        <Text style={styles.btnPrimaryText}>Set Schedule</Text>
+      </TouchableOpacity>
+    )}
+  </View>
+)}
         </View>
       )}
 
@@ -184,6 +209,16 @@ export default function TicketDetailScreen() {
           isLoading={isActioning}
         />
       )}
+      <ScheduleSheet
+  visible={scheduleSheetVisible}
+  onClose={() => setScheduleSheetVisible(false)}
+  onConfirm={(payload) => {
+    scheduleTicket(payload)
+    // Biarkan onSuccess dari mutation yang tutup sheet via setScheduleSheetVisible(false)
+    // atau langsung tutup di sini jika tidak mau nunggu response
+  }}
+  isLoading={isScheduling}
+/>
     </View>
   )
 }
@@ -389,6 +424,50 @@ const ticketType  = CATEGORY_TO_TYPE[categoryKey]
           )}
         </View>
       </Modal>
+    </View>
+  )
+}
+
+// ─── Schedule Info Card ───────────────────────────────────
+
+function ScheduleInfoCard({ ticket }: { ticket: any }) {
+  if (!ticket.schedule) return null
+
+  const { scheduled_date, scheduled_start, scheduled_end, notes } = ticket.schedule
+
+  const formatDate = (raw: string) => {
+  if (!raw) return ''
+  // Ambil hanya bagian date string, buang time component kalau ada
+  const dateOnly = String(raw).split('T')[0]
+  const [yyyy, mm, dd] = dateOnly.split('-').map(Number)
+  if (!yyyy || !mm || !dd) return raw
+  return new Date(yyyy, mm - 1, dd)
+    .toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+}
+
+  return (
+    <View style={styles.card}>
+      <Text style={styles.sectionTitle}>Schedule</Text>
+      <View style={{ marginTop: spacing.md, gap: spacing.sm }}>
+        <View style={styles.scheduleRow}>
+          <Text style={styles.scheduleLabel}>Date</Text>
+          <Text style={styles.scheduleValue}>{formatDate(scheduled_date)}</Text>
+        </View>
+        {scheduled_start && (
+          <View style={styles.scheduleRow}>
+            <Text style={styles.scheduleLabel}>Time</Text>
+            <Text style={styles.scheduleValue}>
+              {scheduled_start}{scheduled_end ? ` → ${scheduled_end}` : ''}
+            </Text>
+          </View>
+        )}
+        {notes && (
+          <View style={styles.scheduleRow}>
+            <Text style={styles.scheduleLabel}>Notes</Text>
+            <Text style={styles.scheduleValue}>{notes}</Text>
+          </View>
+        )}
+      </View>
     </View>
   )
 }
@@ -769,4 +848,8 @@ const styles = StyleSheet.create({
   modalSecondaryText: { fontSize: typography.sizes.button, fontFamily: typography.fonts.medium, color: colors.textPrimary },
   modalPrimaryBtn:    { flex: 1, borderRadius: radius.button, paddingVertical: 13, alignItems: 'center' },
   modalPrimaryText:   { fontSize: typography.sizes.button, fontFamily: typography.fonts.medium, color: colors.textOnBrand },
+
+  scheduleRow:   { flexDirection: 'row', gap: spacing.md },
+scheduleLabel: { width: 48, fontSize: typography.sizes.body, fontFamily: typography.fonts.medium, color: colors.textMuted },
+scheduleValue: { flex: 1, fontSize: typography.sizes.body, fontFamily: typography.fonts.regular, color: colors.textPrimary },
 })

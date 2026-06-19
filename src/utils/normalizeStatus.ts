@@ -25,6 +25,8 @@ const STATUS_MAP: Record<string, StatusKey> = {
   Approved:    'approved',
   'AUTO CLOSED': 'auto_closed',
   'Auto Closed': 'auto_closed', 
+  scheduled:   'scheduled',
+Scheduled:   'scheduled',
 }
 
 export function normalizeStatus(raw: string): StatusKey {

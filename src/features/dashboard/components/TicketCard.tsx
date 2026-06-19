@@ -138,12 +138,20 @@ export function TicketCard({
 
       {/* ── Action buttons (from v2) ── */}
       {section === 'assigned' && (
-        <View style={styles.actionRow}>
-  <TouchableOpacity style={styles.btnAccept} onPress={() => onAccept?.(ticket)} activeOpacity={0.8}>
-    <Text style={styles.btnAcceptText}>Accept</Text>
-  </TouchableOpacity>
-</View>
-      )}
+  <View style={styles.actionRow}>
+    {ticket.category_name === 'Request' && statusRaw === 'Approved' ? (
+      <View style={[styles.btnAccept, { backgroundColor: colors.borderDefault }]}>
+        <Text style={[styles.btnAcceptText, { color: colors.textMuted }]}>
+          Awaiting Schedule
+        </Text>
+      </View>
+    ) : (
+      <TouchableOpacity style={styles.btnAccept} onPress={() => onAccept?.(ticket)} activeOpacity={0.8}>
+        <Text style={styles.btnAcceptText}>Accept</Text>
+      </TouchableOpacity>
+    )}
+  </View>
+)}
 
       {section === 'active' && (
         <View style={styles.actionRow}>

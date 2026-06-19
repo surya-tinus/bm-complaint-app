@@ -12,6 +12,7 @@ import {
   continueTicket,
   commentTicket, 
   reviewThumbs,
+  scheduleTicket,
 } from '@/services/ticket.service'
 import { useAuthStore } from '@/store/auth.store'
 import { Alert } from 'react-native'
@@ -31,6 +32,8 @@ export const useTicketDetail = (id: string, externalToken?: string) => {
   const [actionComment, setActionComment] = useState('')
   const [additionalDetailExpanded, setAdditionalDetailExpanded] = useState(false)
   const [attachmentsExpanded, setAttachmentsExpanded] = useState(false)
+  const [scheduleSheetVisible, setScheduleSheetVisible] = useState(false)
+  
 
   const query = useQuery({
     queryKey: ['ticket', id, externalToken],
@@ -126,6 +129,18 @@ export const useTicketDetail = (id: string, externalToken?: string) => {
     },
   })
 
+  const scheduleMutation = useMutation({
+  mutationFn: (payload: { scheduled_date: string; scheduled_start?: string; scheduled_end?: string; notes?: string }) =>
+    scheduleTicket(id, payload),
+  onSuccess: () => {
+    setScheduleSheetVisible(false)  
+    invalidate()
+  },
+  onError: (error: any) => {
+    Alert.alert('Gagal', error?.response?.data?.message ?? 'Terjadi kesalahan')
+  },
+})
+
   const commentMutation = useMutation({
   mutationFn: (comment: string) => commentTicket(id, comment),
   onSuccess: () => {
@@ -195,12 +210,12 @@ const thumbsMutation = useMutation({
 
   // Staff: claim tiket yang belum ada assigned staff
   const canClaim = externalToken
-    ? status === 'Approved' && !assignedStaffEmplid
-    : role === 'Staff' &&
-      !!dept &&
-      !assignedStaffEmplid &&
-      dept === ticketDept &&
-      status === 'Approved'
+  ? (status === 'Approved' || status === 'Scheduled') && !assignedStaffEmplid
+  : role === 'Staff' &&
+    !!dept &&
+    !assignedStaffEmplid &&
+    dept === ticketDept &&
+    ((status === 'Approved' && categoryName !== 'Request') || status === 'Scheduled')
 
   // Staff: resolve — hanya assigned staff, status In Progress
   const canResolve =
@@ -221,9 +236,10 @@ const thumbsMutation = useMutation({
 
   // Staff: hold — hanya assigned staff, status In Progress
   const canHold =
-    role === 'Staff' &&
-    assignedStaffEmplid === user?.emplid &&
-    status === 'In Progress'
+  role === 'Staff' &&
+  assignedStaffEmplid === user?.emplid &&
+  status === 'In Progress' &&
+  categoryName !== 'Request'  // ← tambah ini
 
   // Staff: continue — hanya assigned staff, status On Hold
   const canContinue =
@@ -242,6 +258,12 @@ const thumbsMutation = useMutation({
     (role === 'Staff' && assignedStaffEmplid === user?.emplid)
   )
 
+  // Admin: schedule
+  const canSchedule =
+  role === 'Admin' &&
+  status === 'Approved' &&
+  categoryName === 'Request'
+
   const canReview =
   role === 'User' &&
   status === 'Resolved' &&
@@ -256,7 +278,8 @@ console.log('user emplid:', user?.emplid)
   approveMutation.isPending ||
   holdMutation.isPending ||
   continueMutation.isPending ||
-  commentMutation.isPending
+  commentMutation.isPending || 
+  scheduleMutation.isPending
 
   return {
     ticket: query.data,
@@ -293,6 +316,13 @@ console.log('user emplid:', user?.emplid)
     setAdditionalDetailExpanded,
     attachmentsExpanded,
     setAttachmentsExpanded,
+
+    // Schedule
+canSchedule,
+scheduleSheetVisible,
+setScheduleSheetVisible,
+scheduleTicket: scheduleMutation.mutate,
+isScheduling: scheduleMutation.isPending,
 
     // Thumbs review
 canReview,

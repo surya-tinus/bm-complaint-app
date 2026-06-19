@@ -35,6 +35,7 @@ export const colors = {
     cancelled:   { bg: '#FEE2E2', text: '#991B1B',  accent: null       },
     rejected:    { bg: '#FEE2E2', text: '#991B1B',  accent: '#EF4444'  },
     auto_closed: { bg: '#F3F4F6', text: '#6B7280', accent: null },
+    scheduled: { bg: '#E0F2FE', text: '#0369A1', accent: '#0EA5E9' },
   },
 
   // Priority

@@ -69,8 +69,12 @@ export default function DashboardScreen() {
   })
 
   const handleAccept = (ticket: any) => {
-    claimMutation.mutate(ticket.id)
+  if (ticket.category_name === 'Request' && ticket.status === 'Approved') {
+    // Tidak bisa di-claim, harus tunggu admin schedule dulu
+    return
   }
+  claimMutation.mutate(ticket.id)
+}
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
