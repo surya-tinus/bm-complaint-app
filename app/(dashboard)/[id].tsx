@@ -2,7 +2,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, StatusBar,
-  Modal, ActivityIndicator, TextInput, Image, FlatList, Dimensions, Animated,
+  Modal, ActivityIndicator, TextInput, Image, FlatList, Dimensions, Animated, Alert,
 } from 'react-native'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useTicketDetail } from '@/features/dashboard/hooks/useTicketDetail'
@@ -21,6 +21,7 @@ import { resolveCategoryKey } from '@/utils/resolveCategoryKey'
 import { CATEGORY_TO_TYPE } from '@/constants'
 import { ThumbsReview, ThumbsFloatingBanner} from '@/components/ui/ThumbsReview'
 import { ScheduleSheet } from '@/features/dashboard/components/ScheduleSheet'
+import * as ImagePicker from 'expo-image-picker'
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
 
@@ -56,6 +57,8 @@ scheduleSheetVisible,
 setScheduleSheetVisible,
 scheduleTicket,
 isScheduling,
+ resolveAttachmentUris,
+  setResolveAttachmentUris,
   } = useTicketDetail(id, externalToken ?? undefined)
 
   const hasActionBar = canCancel || canClaim || canResolve || canApprove || canHold || canContinue || canComment || canSchedule 
@@ -199,16 +202,26 @@ isScheduling,
 
       <CancelModal visible={cancelModalVisible} onKeep={() => setCancelModalVisible(false)} onCancel={handleCancel} isLoading={isCancelling} />
       {pendingAction && (
-        <ActionModal
-          visible={actionModalVisible}
-          action={pendingAction}
-          comment={actionComment}
-          onChangeComment={setActionComment}
-          onCancel={() => setActionModalVisible(false)}
-          onConfirm={confirmAction}
-          isLoading={isActioning}
-        />
-      )}
+  <ActionModal
+    visible={actionModalVisible}
+    action={pendingAction}
+    comment={actionComment}
+    onChangeComment={setActionComment}
+    onCancel={() => {
+      setActionModalVisible(false)
+      setResolveAttachmentUris([])  // ← reset kalau cancel
+    }}
+    onConfirm={confirmAction}
+    isLoading={isActioning}
+    attachmentUris={resolveAttachmentUris}           // ← tambah
+    onAddAttachment={(uri) =>                         // ← tambah
+      setResolveAttachmentUris((prev) => [...prev, uri])
+    }
+    onRemoveAttachment={(uri) =>                      // ← tambah
+      setResolveAttachmentUris((prev) => prev.filter((u) => u !== uri))
+    }
+  />
+)}
       <ScheduleSheet
   visible={scheduleSheetVisible}
   onClose={() => setScheduleSheetVisible(false)}
@@ -535,24 +548,68 @@ function TimelineItem({ step, isLast }: { step: TimelineStep; isLast: boolean })
 
 function AssignedStaffCard({ ticket }: { ticket: TicketDetail }) {
   const hasStaff = !!ticket.assignedStaff
+  const isResolved = ticket.status === 'Resolved'
+  const resolveComment = (ticket as any).resolveComment
+  const resolveAttachments: { id: number; filePath: string; fileName: string }[] = (ticket as any).resolveAttachments ?? []
+
   return (
     <View style={styles.card}>
       <View style={styles.staffRow}>
         <View style={styles.staffAvatar}>
-          <Text style={styles.staffAvatarText}>{hasStaff ? ticket.assignedStaff!.name.charAt(0) : '?'}</Text>
+          <Text style={styles.staffAvatarText}>
+            {hasStaff ? ticket.assignedStaff!.name.charAt(0) : '?'}
+          </Text>
         </View>
         <View>
-          <Text style={styles.staffName}>{hasStaff ? ticket.assignedStaff!.name : 'No staff assigned'}</Text>
-          <Text style={styles.staffRole}>{hasStaff ? (ticket.assignedStaff!.role ?? '') : 'No information available'}</Text>
+          <Text style={styles.staffName}>
+            {hasStaff ? ticket.assignedStaff!.name : 'No staff assigned'}
+          </Text>
+          <Text style={styles.staffRole}>
+            {hasStaff ? (ticket.assignedStaff!.role ?? '') : 'No information available'}
+          </Text>
         </View>
       </View>
+
+      {/* Staff Notes */}
       <View style={styles.staffNotesHeader}>
         <Text style={styles.staffNotesLabel}>Staff Notes</Text>
         <Text style={styles.staffNotesTime}>{ticket.staffNotesTime ?? ''}</Text>
       </View>
       <View style={styles.staffNotesBox}>
-        <Text style={styles.staffNotesText}>{ticket.staffNotes ?? 'No notes from staff yet.'}</Text>
+        <Text style={styles.staffNotesText}>
+          {ticket.staffNotes ?? 'No notes from staff yet.'}
+        </Text>
       </View>
+
+      {/* Work Report — hanya kalau resolved */}
+      {isResolved && (
+        <>
+          <View style={[styles.divider, { marginTop: spacing.md }]} />
+          <View style={[styles.staffNotesHeader, { marginTop: spacing.md }]}>
+            <Text style={styles.staffNotesLabel}>Work Report</Text>
+          </View>
+          <View style={styles.staffNotesBox}>
+            <Text style={styles.staffNotesText}>
+              {resolveComment ?? 'No completion notes provided.'}
+            </Text>
+          </View>
+          {resolveAttachments.length > 0 && (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={{ marginTop: spacing.md }}
+            >
+              {resolveAttachments.map((att) => (
+                <AuthenticatedImage
+                  key={att.id}
+                  filePath={att.filePath}
+                  style={styles.attachmentPreview}
+                />
+              ))}
+            </ScrollView>
+          )}
+        </>
+      )}
     </View>
   )
 }
@@ -609,7 +666,7 @@ const ACTION_PLACEHOLDER: Record<TicketAction, string> = {
   comment: 'e.g. Additional info, question, or follow-up',
 }
 
-function ActionModal({ visible, action, comment, onChangeComment, onCancel, onConfirm, isLoading }: {
+function ActionModal({ visible, action, comment, onChangeComment, onCancel, onConfirm, isLoading, attachmentUris, onAddAttachment, onRemoveAttachment }: {
   visible: boolean
   action: TicketAction
   comment: string
@@ -617,10 +674,41 @@ function ActionModal({ visible, action, comment, onChangeComment, onCancel, onCo
   onCancel: () => void
   onConfirm: () => void
   isLoading: boolean
+  attachmentUris?: string[]
+  onAddAttachment?: (uri: string) => void
+  onRemoveAttachment?: (uri: string) => void
 }) {
   const cfg = ACTION_CONFIG[action]
   const requiresComment = REQUIRES_COMMENT[action]
+  const isResolve = action === 'resolve'
   const canSubmit = !requiresComment || comment.trim().length > 0
+
+  const handleUploadPress = () => {
+    Alert.alert('Add Photo', 'Choose a source', [
+      { text: 'Camera', onPress: handleTakePhoto },
+      { text: 'Gallery', onPress: handlePickFromLibrary },
+      { text: 'Cancel', style: 'cancel' },
+    ])
+  }
+
+  const handlePickFromLibrary = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
+    if (status !== 'granted') { Alert.alert('Permission Required', 'Please grant access to your photo library.'); return }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsMultipleSelection: true,
+      selectionLimit: 5 - (attachmentUris?.length ?? 0),
+      quality: 0.8,
+    })
+    if (!result.canceled) result.assets.forEach((a) => onAddAttachment?.(a.uri))
+  }
+
+  const handleTakePhoto = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync()
+    if (status !== 'granted') { Alert.alert('Permission Required', 'Please grant camera access.'); return }
+    const result = await ImagePicker.launchCameraAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8 })
+    if (!result.canceled) onAddAttachment?.(result.assets[0].uri)
+  }
 
   return (
     <Modal visible={visible} transparent animationType="fade">
@@ -641,14 +729,55 @@ function ActionModal({ visible, action, comment, onChangeComment, onCancel, onCo
           {requiresComment && comment.trim().length === 0 && (
             <Text style={styles.commentRequired}>Comment is required for this action.</Text>
           )}
+
+          {/* Attachment — hanya untuk resolve */}
+          {isResolve && (
+            <View style={{ marginBottom: spacing.md }}>
+              <Text style={[styles.modalAttachLabel]}>
+                Work Proof <Text style={{ color: '#DC2626' }}>*</Text>
+              </Text>
+              {(attachmentUris?.length ?? 0) > 0 ? (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  {attachmentUris!.map((uri) => (
+                    <View key={uri} style={styles.modalThumb}>
+                      <Image source={{ uri }} style={styles.modalThumbImage} />
+                      <TouchableOpacity
+                        style={styles.modalThumbRemove}
+                        onPress={() => onRemoveAttachment?.(uri)}
+                        hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+                      >
+                        <Text style={styles.modalThumbRemoveText}>✕</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                  {(attachmentUris?.length ?? 0) < 5 && (
+                    <TouchableOpacity style={styles.modalThumbAdd} onPress={handleUploadPress}>
+                      <Text style={styles.modalThumbAddIcon}>+</Text>
+                    </TouchableOpacity>
+                  )}
+                </ScrollView>
+              ) : (
+                <TouchableOpacity style={styles.modalUploadBox} onPress={handleUploadPress} activeOpacity={0.8}>
+                  <Text style={styles.modalUploadText}>Tap to upload work proof photo</Text>
+                </TouchableOpacity>
+              )}
+              {(attachmentUris?.length ?? 0) === 0 && (
+                <Text style={styles.commentRequired}>At least one photo is required to resolve.</Text>
+              )}
+            </View>
+          )}
+
           <View style={styles.modalButtons}>
             <TouchableOpacity style={styles.modalSecondaryBtn} onPress={onCancel} disabled={isLoading}>
               <Text style={styles.modalSecondaryText}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.modalPrimaryBtn, { backgroundColor: canSubmit ? cfg.color : colors.textMuted }]}
+              style={[
+                styles.modalPrimaryBtn,
+                { backgroundColor: (canSubmit && (!isResolve || (attachmentUris?.length ?? 0) > 0)) ? cfg.color : colors.textMuted },
+              ]}
               onPress={onConfirm}
-              disabled={isLoading || !canSubmit}
+              disabled={isLoading || !canSubmit || (isResolve && (attachmentUris?.length ?? 0) === 0)}
             >
               {isLoading ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.modalPrimaryText}>Confirm</Text>}
             </TouchableOpacity>
@@ -852,4 +981,14 @@ const styles = StyleSheet.create({
   scheduleRow:   { flexDirection: 'row', gap: spacing.md },
 scheduleLabel: { width: 48, fontSize: typography.sizes.body, fontFamily: typography.fonts.medium, color: colors.textMuted },
 scheduleValue: { flex: 1, fontSize: typography.sizes.body, fontFamily: typography.fonts.regular, color: colors.textPrimary },
+
+modalAttachLabel:    { fontSize: typography.sizes.label, fontFamily: typography.fonts.medium, color: colors.textPrimary, marginBottom: spacing.sm },
+modalThumb:          { marginRight: spacing.sm, position: 'relative' },
+modalThumbImage:     { width: 72, height: 72, borderRadius: radius.card },
+modalThumbRemove:    { position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: 10, backgroundColor: '#DC2626', alignItems: 'center', justifyContent: 'center' },
+modalThumbRemoveText:{ color: '#fff', fontSize: 9, fontFamily: typography.fonts.bold },
+modalThumbAdd:       { width: 72, height: 72, borderRadius: radius.card, borderWidth: 1.5, borderColor: colors.brand, borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', backgroundColor: colors.brandDim },
+modalThumbAddIcon:   { fontSize: 22, color: colors.brand, lineHeight: 26 },
+modalUploadBox:      { borderWidth: 1.5, borderColor: colors.borderStrong, borderStyle: 'dashed', borderRadius: radius.card, padding: spacing.lg, alignItems: 'center', backgroundColor: colors.bgElevated },
+modalUploadText:     { fontSize: typography.sizes.label, fontFamily: typography.fonts.medium, color: colors.brand },
 })

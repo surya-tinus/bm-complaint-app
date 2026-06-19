@@ -81,13 +81,15 @@ export const getTicketById = async (id: string, internalToken?: string) => {
     const t = data.data
 
   const attachments = (t.history ?? []).flatMap((h: any, histIndex: number) =>
-    (h.attachments ?? []).map((att: any, attIndex: number) => ({
-      id: histIndex * 100 + attIndex,
-      historyId: h.id,
-      fileName: att.file_name,
-      filePath: att.file_path,
-    }))
-  )
+  h.action_name === 'Ticket Resolved'  // ← skip resolve attachments
+    ? []
+    : (h.attachments ?? []).map((att: any, attIndex: number) => ({
+        id: histIndex * 100 + attIndex,
+        historyId: h.id,
+        fileName: att.file_name,
+        filePath: att.file_path,
+      }))
+)
 
   // Timeline — balik dari DESC ke ASC, entry terbaru = active
   const chronological = [...(t.history ?? [])].reverse()
@@ -103,6 +105,16 @@ export const getTicketById = async (id: string, internalToken?: string) => {
     changedBy: h.changed_by_name ?? undefined,
     attachments: h.attachments ?? [],
   }))
+
+  // Extract resolve history entry
+const resolveEntry = (t.history ?? []).find((h: any) => h.action_name === 'Ticket Resolved')
+
+const resolveComment = resolveEntry?.comment ?? null
+const resolveAttachments = (resolveEntry?.attachments ?? []).map((att: any, i: number) => ({
+  id: i,
+  fileName: att.file_name,
+  filePath: att.file_path,
+}))
 
   // Staff notes — ambil dari history yang punya comment, terbaru
   const STAFF_ACTION_CODES = ['CLAIM_TICKET', 'HOLD_TICKET', 'CONTINUE', 'RESOLVE_TICKET', 'REPLY_TICKET', 'ASSIGN_STAFF']
@@ -135,6 +147,8 @@ const historyWithComment = t.history?.find((h: any) =>
     timeline,
     attachments,
     schedule: t.schedule ?? null,
+    resolveComment,
+resolveAttachments,
   }
 } catch (err: any) {
     console.log('getTicketById ERROR:', err?.response?.status, JSON.stringify(err?.response?.data), err?.message)
@@ -208,13 +222,29 @@ export const claimTicket = async (id: string, comment?: string, internalToken?: 
 
 // ─── RESOLVE TICKET (Staff) ────────────────────────────────
 
-export const resolveTicket = async (id: string, comment: string) => {
+export const resolveTicket = async (id: string, comment: string, attachmentUris?: string[]) => {
   if (config.USE_MOCK) {
     await delay(800)
     return
   }
 
-  const { data } = await api.post(`/tickets/${id}/resolve`, { comment })
+  const form = new FormData()
+  form.append('comment', comment)
+
+  attachmentUris?.forEach((uri, index) => {
+    const filename = uri.split('/').pop() ?? `photo_${index}.jpg`
+    const ext = filename.split('.').pop()?.toLowerCase() ?? 'jpg'
+    const mimeType = ext === 'png' ? 'image/png' : 'image/jpeg'
+    form.append('attachments', {
+      uri,
+      name: filename,
+      type: mimeType,
+    } as any)
+  })
+
+  const { data } = await api.post(`/tickets/${id}/resolve`, form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
   return data
 }
 

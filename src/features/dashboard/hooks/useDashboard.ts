@@ -3,20 +3,31 @@ import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { getAllTickets } from '@/services/ticket.service'
 import { useAuthStore } from '@/store/auth.store'
+import { getPlaces } from '@/services/lookup.service'
 
 // FilterLabel type & options
-export type FilterLabel = 'All' | 'Approved' | 'In Progress' | 'On Hold' | 'Resolved'
+export type FilterLabel =
+  | 'All'
+  | 'Approved'
+  | 'In Progress'
+  | 'On Hold'
+  | 'Resolved'
+  | 'Cancelled'
+  | 'Rejected'
 
 export const FILTER_OPTIONS: FilterLabel[] = [
-  'All', 'Approved', 'In Progress', 'On Hold', 'Resolved',
+  'All', 'Approved', 'In Progress', 'On Hold', 'Resolved', 'Cancelled', 'Rejected',
 ]
+
 
 const FILTER_STATUS_MAP: Record<FilterLabel, string | null> = {
   All: null,
-  'Approved': 'Approved',
+  Approved: 'Approved',
   'In Progress': 'In Progress',
   'On Hold': 'On Hold',
   Resolved: 'Resolved',
+  Cancelled: 'Cancelled',
+  Rejected: 'Rejected',
 }
 
 export function useDashboard() {
@@ -36,6 +47,26 @@ const { data: tickets = [], isLoading, isError, error, refetch } = useQuery({
   enabled: !!user?.emplid,
 })
 
+//Building
+const { data: places = [] } = useQuery({
+  queryKey: ['places'],
+  queryFn: getPlaces,
+  staleTime: 1000 * 60 * 10, // 10 menit, gedung jarang berubah
+  enabled: role === 'Staff',
+})
+
+const [activeBuildingFilter, setActiveBuildingFilter] = useState<string>('All')
+
+const buildingOptions = useMemo(() => {
+  if (role !== 'Staff') return [] as string[]
+  const buildings = places
+    .map((p) => p.building)
+    .filter(Boolean)
+  return ['All', ...Array.from(new Set(buildings))] as string[]
+}, [places, role])
+
+
+//Console log (debugging)
 console.log('isError:', isError, 'error:', error)  // ← tambah ini
 
 console.log('=== DASHBOARD DEBUG ===')
@@ -58,17 +89,19 @@ const assignedTickets = useMemo(() => {
   if (role !== 'Staff') return []
   return tickets.filter((t: any) =>
     (t.status_name === 'Approved' || t.status_name === 'Scheduled') &&
-    t.scope_department === dept
+    t.scope_department === dept &&
+    (activeBuildingFilter === 'All' || t.building === activeBuildingFilter)
   )
-}, [tickets, role, dept])
+}, [tickets, role, dept, activeBuildingFilter])
 
 const activeTickets = useMemo(() => {
   if (role !== 'Staff') return []
   return tickets.filter((t: any) =>
     (t.status_name === 'In Progress' || t.status_name === 'On Hold') &&
-    t.scope_department === dept
+    t.scope_department === dept &&
+    (activeBuildingFilter === 'All' || t.building === activeBuildingFilter)
   )
-}, [tickets, role, dept])
+}, [tickets, role, dept, activeBuildingFilter])
 
 const stats = useMemo(() => {
   if (role !== 'Staff') return null
@@ -116,5 +149,7 @@ console.log('activeTickets count:', activeTickets.length)
     role,
     user,             // ✅ expose user langsung kalau komponen butuh emplid/email
     isLoading, isError, refetch,
+    activeBuildingFilter, setActiveBuildingFilter,
+  buildingOptions,
   }
 }

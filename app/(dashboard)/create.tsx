@@ -302,7 +302,9 @@ function Step3Details({ places, placesByBuilding, selectedPlaceId, onSelectPlace
 
   return (
     <ScrollView contentContainerStyle={styles.stepContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-      <Text style={styles.fieldLabel}>Location</Text>
+      <Text style={styles.fieldLabel}>
+  Location <Text style={styles.required}>*</Text>
+</Text>
       <LocationPickerSheet
         places={places}
         placesByBuilding={placesByBuilding}
@@ -310,7 +312,9 @@ function Step3Details({ places, placesByBuilding, selectedPlaceId, onSelectPlace
         onSelectPlace={onSelectPlace}
       />
 
-      <Text style={[styles.fieldLabel, { marginTop: spacing.lg }]}>Issue Title</Text>
+      <Text style={[styles.fieldLabel, { marginTop: spacing.lg }]}>
+  Issue Title <Text style={styles.required}>*</Text>
+</Text>
       <TextInput
         style={styles.textInput}
         placeholder="e.g. B513, 3rd floor restroom, outdoor area"
@@ -321,7 +325,9 @@ function Step3Details({ places, placesByBuilding, selectedPlaceId, onSelectPlace
       />
       <Text style={styles.charCount}>{shortDescription.length}/150</Text>
 
-      <Text style={[styles.fieldLabel, { marginTop: spacing.lg }]}>Problem Description</Text>
+      <Text style={[styles.fieldLabel, { marginTop: spacing.lg }]}>
+  Problem Description <Text style={styles.required}>*</Text>
+</Text>
       <TextInput
         style={[styles.textInput, styles.textArea]}
         placeholder="e.g. AC hasn't been cooling since Monday morning"
@@ -336,8 +342,11 @@ function Step3Details({ places, placesByBuilding, selectedPlaceId, onSelectPlace
       <Text style={styles.charCount}>{description.length}/500</Text>
 
       <Text style={[styles.fieldLabel, { marginTop: spacing.lg }]}>
-        Attachments <Text style={styles.attachmentCount}>({attachmentUris.length}/{MAX_ATTACHMENTS})</Text>
-      </Text>
+  Attachments{' '}
+  <Text style={styles.attachmentCount}>({attachmentUris.length}/{MAX_ATTACHMENTS})</Text>
+  {'  '}
+  <Text style={styles.optionalTag}>Optional</Text>
+</Text>
 
       {attachmentUris.length > 0 ? (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.attachmentRow} contentContainerStyle={{ alignItems: 'center' }}>
@@ -499,7 +508,8 @@ stepLabel: {
   },
   textArea:   { minHeight: 100, paddingTop: spacing.md },
   charCount:  { fontSize: typography.sizes.microcopy, fontFamily: typography.fonts.regular, color: colors.textMuted, textAlign: 'right', marginTop: spacing.xs },
-
+  required: { color: colors.error, fontFamily: typography.fonts.bold },
+  optionalTag: { fontSize: typography.sizes.microcopy, fontFamily: typography.fonts.regular, color: colors.textMuted },
   // Attachments
   attachmentCount:    { fontSize: typography.sizes.microcopy, fontFamily: typography.fonts.regular, color: colors.textMuted },
   attachmentRow:      { marginBottom: spacing.sm },

@@ -16,6 +16,9 @@ export const colors = {
   borderDefault: '#E5E7EB',
   borderSubtle:  '#F3F4F6',
   borderStrong:  '#D1D5DB',
+  
+  // Error
+  error: '#DC2626', 
 
   // Text
   textPrimary:   '#111827',

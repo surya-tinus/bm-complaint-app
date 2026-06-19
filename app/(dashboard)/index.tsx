@@ -21,11 +21,14 @@ import { useDashboard } from '@/features/dashboard/hooks/useDashboard'
 import { useAuthStore } from '@/store/auth.store'
 import { colors, spacing, typography, radius, screenPadding } from '@/constants'
 import { ClockCounterClockwise, ClipboardText } from 'phosphor-react-native'
+import { BuildingFilterChips } from '@/features/dashboard/components/BuildingFilterChips'
 
 export default function DashboardScreen() {
   const clearAuth = useAuthStore((s) => s.clearAuth)
   const insets = useSafeAreaInsets()
   const router = useRouter()
+
+  //Destructure
   const {
     searchQuery, setSearchQuery,
     activeFilter, setActiveFilter,
@@ -37,6 +40,9 @@ export default function DashboardScreen() {
     isLoading,
     isError,
     refetch,
+    activeBuildingFilter, 
+    setActiveBuildingFilter,
+    buildingOptions,
   } = useDashboard()
 
   const isStaff = role === 'Staff'
@@ -154,15 +160,22 @@ export default function DashboardScreen() {
             ListHeaderComponent={
               <>
                 <View style={styles.searchArea}>
-                  <SearchBar
-                    value={searchQuery}
-                    onChangeText={setSearchQuery}
-                    placeholder="Search by ticket ID or issue..."
-                  />
-                  {!isStaff && (
-                    <FilterChips activeFilter={activeFilter} onFilterChange={setActiveFilter} />
-                  )}
-                </View>
+  <SearchBar
+    value={searchQuery}
+    onChangeText={setSearchQuery}
+    placeholder="Search by ticket ID or issue..."
+  />
+  {!isStaff && (
+    <FilterChips activeFilter={activeFilter} onFilterChange={setActiveFilter} />
+  )}
+  {isStaff && (
+    <BuildingFilterChips
+      options={buildingOptions}
+      activeFilter={activeBuildingFilter}
+      onFilterChange={setActiveBuildingFilter}
+    />
+  )}
+</View>
 
                 {isStaff && stats && (
                   <StaffOverview stats={stats} />

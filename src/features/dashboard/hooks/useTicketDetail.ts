@@ -17,6 +17,7 @@ import {
 import { useAuthStore } from '@/store/auth.store'
 import { Alert } from 'react-native'
 
+
 export type TicketAction = 'claim' | 'resolve' | 'approve' | 'hold' | 'continue' | 'comment'
 
 export const useTicketDetail = (id: string, externalToken?: string) => {
@@ -33,6 +34,7 @@ export const useTicketDetail = (id: string, externalToken?: string) => {
   const [additionalDetailExpanded, setAdditionalDetailExpanded] = useState(false)
   const [attachmentsExpanded, setAttachmentsExpanded] = useState(false)
   const [scheduleSheetVisible, setScheduleSheetVisible] = useState(false)
+  const [resolveAttachmentUris, setResolveAttachmentUris] = useState<string[]>([])
   
 
   const query = useQuery({
@@ -74,17 +76,18 @@ export const useTicketDetail = (id: string, externalToken?: string) => {
 
   // ─── Resolve (Staff) — comment wajib ──────────────────
   const resolveMutation = useMutation({
-    mutationFn: (comment: string) => resolveTicket(id, comment),
-    onSuccess: () => {
-      setActionModalVisible(false)
-      setActionComment('')
-      invalidate()
-    },
-    onError: (error: any) => {
-      console.log('resolve error:', error?.response?.data)
-      Alert.alert('Gagal', error?.response?.data?.message ?? 'Terjadi kesalahan')
-    },
-  })
+  mutationFn: (comment: string) => resolveTicket(id, comment, resolveAttachmentUris),
+  onSuccess: () => {
+    setActionModalVisible(false)
+    setActionComment('')
+    setResolveAttachmentUris([])  // ← reset
+    invalidate()
+  },
+  onError: (error: any) => {
+    console.log('resolve error:', error?.response?.data)
+    Alert.alert('Gagal', error?.response?.data?.message ?? 'Terjadi kesalahan')
+  },
+})
 
   // ─── Approve (Admin) ──────────────────────────────────
   const approveMutation = useMutation({
@@ -330,5 +333,7 @@ thumbsReview: query.data?.user_thumbs_review as boolean | null,
 submitThumbsReview: thumbsMutation.mutate,
 isSubmittingThumbsReview: thumbsMutation.isPending,
 
+  resolveAttachmentUris,
+setResolveAttachmentUris,    
   }
 }
