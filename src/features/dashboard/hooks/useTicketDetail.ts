@@ -1,5 +1,4 @@
 // src/features/dashboard/hooks/useTicketDetail.ts
-// src/features/dashboard/hooks/useTicketDetail.ts
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
@@ -212,13 +211,16 @@ const thumbsMutation = useMutation({
   // ─── Visibility logic ─────────────────────────────────
 
   // Staff: claim tiket yang belum ada assigned staff
+  // NOTE: backend rename 'Approved' -> 'Open' (lihat seed.sql Ticket_Statuses).
+  // 'Open' di sini merujuk ke status "siap diklaim staff", BUKAN status awal
+  // tiket baru dibuat (yang masih 'Pending' sebelum di-approve Admin).
   const canClaim = externalToken
-  ? (status === 'Approved' || status === 'Scheduled') && !assignedStaffEmplid
-  : role === 'Staff' &&
-    !!dept &&
-    !assignedStaffEmplid &&
-    dept === ticketDept &&
-    ((status === 'Approved' && categoryName !== 'Request') || status === 'Scheduled')
+    ? (status === 'Open' || status === 'Scheduled') && !assignedStaffEmplid
+    : role === 'Staff' &&
+      !!dept &&
+      !assignedStaffEmplid &&
+      dept === ticketDept &&
+      ((status === 'Open' && categoryName !== 'Request') || status === 'Scheduled')
 
   // Staff: resolve — hanya assigned staff, status In Progress
   const canResolve =
@@ -227,6 +229,7 @@ const thumbsMutation = useMutation({
   status === 'In Progress'
 
   // Admin: approve tiket Pending
+  // Tidak terdampak rename — mengecek status SEBELUM approve terjadi.
   const canApprove =
     role === 'Admin' &&
     status === 'Pending' &&
@@ -261,10 +264,10 @@ const thumbsMutation = useMutation({
     (role === 'Staff' && assignedStaffEmplid === user?.emplid)
   )
 
-  // Admin: schedule
+  // Admin: schedule — hanya tiket kategori Request yang sudah Open
   const canSchedule =
   role === 'Admin' &&
-  status === 'Approved' &&
+  status === 'Open' &&
   categoryName === 'Request'
 
   const canReview =

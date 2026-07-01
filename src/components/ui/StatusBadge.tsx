@@ -18,7 +18,7 @@ import type { StatusKey } from '@/constants'
 import { normalizeStatus } from '@/utils/normalizeStatus'
 
 const STATUS_LABEL: Record<StatusKey, { user: string; staff: string }> = {
-  open:        { user: 'Submitted',   staff: 'New Ticket'  },
+  open:        { user: 'Open',        staff: 'Open'        },
   pending:     { user: 'Pending',     staff: 'Pending'     },
   in_progress: { user: 'In Progress', staff: 'In Progress' },
   on_hold:     { user: 'On Hold',     staff: 'On Hold'     },
@@ -26,15 +26,16 @@ const STATUS_LABEL: Record<StatusKey, { user: string; staff: string }> = {
   unresolved:  { user: 'Unresolved',  staff: 'Unresolved'  },
   cancelled:   { user: 'Cancelled',   staff: 'Cancelled'   },
   rejected:    { user: 'Revision',    staff: 'Rejected'    },
+  // @deprecated — lihat colors.ts
   approved:    { user: 'Approved',    staff: 'Approved'    },
   auto_closed: { user: 'Closed',      staff: 'Auto Closed' },
-  scheduled: { user: 'Scheduled', staff: 'Scheduled' },
+  scheduled:   { user: 'Scheduled',   staff: 'Scheduled'   },
 }
 
 type PhosphorIcon = React.ComponentType<{ size: number; color: string; weight: 'bold' }>
 
 const STATUS_ICONS: Record<StatusKey, PhosphorIcon> = {
-  open:        CircleIcon,
+  open:        SealCheckIcon,
   pending:     ClockIcon,
   in_progress: ArrowsClockwiseIcon,
   on_hold:     PauseCircleIcon,
@@ -42,9 +43,10 @@ const STATUS_ICONS: Record<StatusKey, PhosphorIcon> = {
   unresolved:  XCircleIcon,
   cancelled:   ProhibitInsetIcon,
   rejected:    XCircleIcon,
+  // @deprecated — lihat colors.ts
   approved:    SealCheckIcon,
   auto_closed: LockSimpleIcon,
-  scheduled: CalendarIcon,
+  scheduled:   CalendarIcon,
 }
 
 interface Props {

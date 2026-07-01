@@ -75,12 +75,14 @@ export default function DashboardScreen() {
   })
 
   const handleAccept = (ticket: any) => {
-  if (ticket.category_name === 'Request' && ticket.status === 'Approved') {
-    // Tidak bisa di-claim, harus tunggu admin schedule dulu
-    return
+    // Tiket Request yang berstatus 'Open' tidak bisa langsung di-claim —
+    // harus menunggu admin set schedule terlebih dahulu (status -> 'Scheduled').
+    // NOTE: backend rename 'Approved' -> 'Open' (lihat seed.sql Ticket_Statuses).
+    if (ticket.category_name === 'Request' && ticket.status_name === 'Open') {
+      return
+    }
+    claimMutation.mutate(ticket.id)
   }
-  claimMutation.mutate(ticket.id)
-}
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>

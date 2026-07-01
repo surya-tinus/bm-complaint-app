@@ -27,19 +27,22 @@ export const colors = {
   textOnBrand:   '#ffffff',
 
   // Status — light pill style
-  status: {
-    open:        { bg: '#F3F4F6', text: '#6B7280',  accent: null       },
-    pending:     { bg: '#F3F4F6', text: '#6B7280',  accent: null       },
-     approved:    { bg: '#EEF2FF', text: '#4338CA',  accent: '#6366F1'  },
-    in_progress: { bg: '#DBEAFE', text: '#1D4ED8',  accent: '#1f52d0'  },
-    on_hold:     { bg: '#FEF3C7', text: '#B45309',  accent: '#F59E0B'  },
-    resolved:    { bg: '#D1FAE5', text: '#065F46',  accent: '#10B981'  },
-    unresolved:  { bg: '#FEE2E2', text: '#991B1B',  accent: '#EF4444'  },
-    cancelled:   { bg: '#FEE2E2', text: '#991B1B',  accent: null       },
-    rejected:    { bg: '#FEE2E2', text: '#991B1B',  accent: '#EF4444'  },
-    auto_closed: { bg: '#F3F4F6', text: '#6B7280', accent: null },
-    scheduled: { bg: '#E0F2FE', text: '#0369A1', accent: '#0EA5E9' },
-  },
+ status: {
+  // @deprecated — warna lama open sebelum rename 'Approved' -> 'Open'
+  // open:        { bg: '#F3F4F6', text: '#6B7280',  accent: null       },
+  open:        { bg: '#EFF6FF', text: '#3B82F6',  accent: '#3B82F6'  },
+  pending:     { bg: '#F3F4F6', text: '#6B7280',  accent: null       },
+  // @deprecated — lihat comment di atas open
+  approved:    { bg: '#EEF2FF', text: '#4338CA',  accent: '#6366F1'  },
+  in_progress: { bg: '#DBEAFE', text: '#1D4ED8',  accent: '#1f52d0'  },
+  on_hold:     { bg: '#FEF3C7', text: '#B45309',  accent: '#F59E0B'  },
+  resolved:    { bg: '#D1FAE5', text: '#065F46',  accent: '#10B981'  },
+  unresolved:  { bg: '#FEE2E2', text: '#991B1B',  accent: '#EF4444'  },
+  cancelled:   { bg: '#FEE2E2', text: '#991B1B',  accent: null       },
+  rejected:    { bg: '#FEE2E2', text: '#991B1B',  accent: '#EF4444'  },
+  auto_closed: { bg: '#F3F4F6', text: '#6B7280',  accent: null       },
+  scheduled:   { bg: '#E0F2FE', text: '#0369A1',  accent: '#0EA5E9'  },
+},
 
   // Priority
   priority: {
@@ -53,8 +56,8 @@ export const colors = {
     electrical:         { dot: '#F59E0B', bg: '#FEF3C7' },
     plumbing:           { dot: '#0EA5E9', bg: '#E0F2FE' },
     room_condition:     { dot: '#8B5CF6', bg: '#EDE9FE' },
-    cleaning:           { dot: '#6B7280', bg: '#F3F4F6' },
-    staff_help:         { dot: '#10B981', bg: '#D1FAE5' },
+    cleaning:  { dot: '#10B981', bg: '#D1FAE5' },
+staff_help: { dot: '#F97316', bg: '#FFF7ED' },
     cleanliness:        { dot: '#6B7280', bg: '#F3F4F6' },
     facility_condition: { dot: '#EF4444', bg: '#FEE2E2' },
     general_information: { dot: '#8B5CF6', bg: '#EDE9FE' },

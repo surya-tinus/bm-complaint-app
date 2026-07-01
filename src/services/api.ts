@@ -30,6 +30,9 @@ api.interceptors.response.use(
     // Network error / timeout — tidak ada response sama sekali
     if (!error.response) {
       console.error('[API] Network error or timeout:', error.message ?? error.code)
+      console.log('Error config URL:', error.config?.url);
+console.log('Error response:', error.response);
+console.log('Error code:', error.code);
       return Promise.reject(error)
     }
 

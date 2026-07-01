@@ -11,6 +11,10 @@ const STATUS_MAP: Record<string, StatusKey> = {
   unresolved:  'unresolved',
   cancelled:   'cancelled',
   rejected:    'rejected',
+  // @deprecated — backend rename 'Approved' -> 'Open' (lihat seed.sql Ticket_Statuses).
+  // Backend tidak lagi mengirim string ini untuk tiket baru. Dipertahankan sebagai
+  // jaring pengaman untuk data lama/histori yang mungkin masih menyimpan nilai ini.
+  // Aman dihapus setelah dipastikan tidak ada lagi data lama yang bergantung padanya.
   approved:    'approved', 
   auto_closed:   'auto_closed',
   // PascalCase / display string dari backend
@@ -22,6 +26,7 @@ const STATUS_MAP: Record<string, StatusKey> = {
   Unresolved:  'unresolved',
   Cancelled:   'cancelled',
   Rejected:    'rejected',
+  // @deprecated — lihat catatan di atas pada key 'approved'
   Approved:    'approved',
   'AUTO CLOSED': 'auto_closed',
   'Auto Closed': 'auto_closed', 

@@ -8,7 +8,7 @@ import { getPlaces } from '@/services/lookup.service'
 // FilterLabel type & options
 export type FilterLabel =
   | 'All'
-  | 'Approved'
+  | 'Open'
   | 'In Progress'
   | 'On Hold'
   | 'Resolved'
@@ -16,13 +16,13 @@ export type FilterLabel =
   | 'Rejected'
 
 export const FILTER_OPTIONS: FilterLabel[] = [
-  'All', 'Approved', 'In Progress', 'On Hold', 'Resolved', 'Cancelled', 'Rejected',
+  'All', 'Open', 'In Progress', 'On Hold', 'Resolved', 'Cancelled', 'Rejected',
 ]
 
 
 const FILTER_STATUS_MAP: Record<FilterLabel, string | null> = {
   All: null,
-  Approved: 'Approved',
+  Open: 'Open',
   'In Progress': 'In Progress',
   'On Hold': 'On Hold',
   Resolved: 'Resolved',
@@ -88,7 +88,7 @@ console.log('all ticket status_names:', tickets.map((t: any) => t.status_name))
 const assignedTickets = useMemo(() => {
   if (role !== 'Staff') return []
   return tickets.filter((t: any) =>
-    (t.status_name === 'Approved' || t.status_name === 'Scheduled') &&
+    (t.status_name === 'Open' || t.status_name === 'Scheduled') &&
     t.scope_department === dept &&
     (activeBuildingFilter === 'All' || t.building === activeBuildingFilter)
   )
@@ -107,7 +107,7 @@ const stats = useMemo(() => {
   if (role !== 'Staff') return null
   return {
     assigned: tickets.filter((t: any) => 
-  (t.status_name === 'Approved' || t.status_name === 'Scheduled') && 
+  (t.status_name === 'Open' || t.status_name === 'Scheduled') && 
   t.scope_department === dept
 ).length,
     active: tickets.filter((t: any) => 

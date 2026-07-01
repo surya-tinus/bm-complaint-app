@@ -139,7 +139,7 @@ export function TicketCard({
       {/* ── Action buttons (from v2) ── */}
       {section === 'assigned' && (
   <View style={styles.actionRow}>
-    {ticket.category_name === 'Request' && statusRaw === 'Approved' ? (
+    {ticket.category_name === 'Request' && statusRaw === 'Open' ? (
       <View style={[styles.btnAccept, { backgroundColor: colors.borderDefault }]}>
         <Text style={[styles.btnAcceptText, { color: colors.textMuted }]}>
           Awaiting Schedule
